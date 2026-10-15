@@ -1,4 +1,6 @@
-# ATK Link studio
+# TinyTrail
+
+The neutral TinyTrail app is deployed at **https://tinytrail.link/manage/** on Cloudflare Workers with D1 and Firebase email authentication. The source and activation notes are in [`cloudflare/`](cloudflare/SETUP.md). The original eight GitHub Pages QR addresses are preserved. Live account/email-delivery verification requires an actual email owner to complete sign-up.
 
 **Email accounts and personal profiles:** the next deployment target is implemented in [`cloudflare/`](cloudflare/SETUP.md). It uses Cloudflare Workers, D1, and Firebase Authentication and preserves the eight original GitHub QR URLs. See that guide for the one-time free-account setup and deployment steps. The live GitHub Pages version below remains unchanged until the new service is activated and verified.
 

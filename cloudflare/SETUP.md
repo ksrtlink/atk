@@ -9,7 +9,7 @@ The current GitHub Pages manager and its eight original redirect folders remain 
 1. Sign up at https://dash.cloudflare.com/sign-up. Stay on the Free plan.
 2. Create a Firebase project at https://console.firebase.google.com/ on the Spark plan. Google Analytics is optional and unnecessary for this tool.
 3. In Firebase, open **Build → Authentication → Get started → Sign-in method**. Enable **Email/Password**. Passwordless email-link sign-in is not required.
-4. Under Authentication settings, configure a password policy with at least eight characters and enable email-enumeration protection where available. Set verification and password-reset email templates to “Kearney Link Studio”. Firebase owns these emails and hosts their action handler; this application never receives a verification code or user password on its backend.
+4. Under Authentication settings, configure a password policy with at least eight characters and enable email-enumeration protection where available. Set verification and password-reset email templates to “TinyTrail”. Firebase owns these emails and hosts their action handler; this application never receives a verification code or user password on its backend.
 5. In **Project settings → General → Your apps**, register a **Web** app. Do not enable Firebase Hosting. Copy the public `projectId` and `apiKey` from its configuration. These are client configuration identifiers, not service-account private keys. Do not share passwords, service-account JSON, refresh tokens, or Cloudflare API tokens in chat.
 
 No Firestore database, Firebase Storage, Cloud Functions, Google Analytics, or paid Firebase service is needed. This release implements email/password with address verification. Google sign-in can be added later through Firebase; it is not enabled by the current UI.
@@ -21,7 +21,7 @@ Use Node.js 22.13 or later. From this `cloudflare` directory:
 ```powershell
 npm ci
 npx wrangler login
-npx wrangler d1 create link-studio
+npx wrangler d1 create tinytrail-db
 Copy-Item wrangler.example.jsonc wrangler.jsonc
 ```
 
@@ -31,7 +31,7 @@ In `wrangler.jsonc`, set:
 
 | Setting | Value |
 | --- | --- |
-| `name` | An available Worker name, e.g. `kearney-link-studio` |
+| `name` | An available Worker name, e.g. `tinytrail` |
 | `d1_databases[0].database_id` | The actual ID returned by D1 create |
 | `vars.FIREBASE_PROJECT_ID` | Your Firebase `projectId` |
 | `vars.FIREBASE_API_KEY` | Your Firebase Web API key |

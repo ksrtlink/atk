@@ -1,0 +1,22 @@
+:root {
+  --tinytrail-ink: #202B38;
+  --tinytrail-teal: #126D60;
+  --tinytrail-blue: #2C5EA8;
+  --tinytrail-rose: #B04D76;
+  --tinytrail-white: #FFFFFF;
+  /* Compatibility aliases for the shared QR components. */
+  --brand-white: var(--tinytrail-white);
+  --brand-slate: var(--tinytrail-ink);
+  --brand-purple: var(--tinytrail-teal);
+  --brand-blue: var(--tinytrail-blue);
+  --brand-pink: var(--tinytrail-rose);
+  --accent: var(--tinytrail-teal);
+  --focus: var(--tinytrail-teal);
+}
+.tinytrail-wordmark { display:flex; align-items:center; gap:9px; color:var(--text); font-size:26px; font-weight:650; letter-spacing:-1.1px; }
+.tinytrail-symbol { display:grid; place-items:center; width:32px; height:32px; border-radius:10px; background:var(--accent); color:var(--surface); font-size:25px; font-weight:400; letter-spacing:0; }
+.brand-sub { padding-left:42px; letter-spacing:1.8px; }
+.brand { gap:9px; }
+.workspace-monogram { background:var(--accent-soft); color:var(--accent); }
+.page-heading .eyebrow { letter-spacing:1.6px; }
+@media(max-width:900px){.tinytrail-wordmark{font-size:23px;}.tinytrail-symbol{width:29px;height:29px;font-size:23px;}.brand-sub{padding-left:38px;}}
