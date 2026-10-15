@@ -1,5 +1,7 @@
 # ATK Link studio
 
+**Email accounts and personal profiles:** the next deployment target is implemented in [`cloudflare/`](cloudflare/SETUP.md). It uses Cloudflare Workers, D1, and Firebase Authentication and preserves the eight original GitHub QR URLs. See that guide for the one-time free-account setup and deployment steps. The live GitHub Pages version below remains unchanged until the new service is activated and verified.
+
 Manage short links at **https://ksrtlink.github.io/atk/manage/**.
 
 The eight original redirect folders and the root redirect are preserved. The manager is plain HTML, CSS, and JavaScript modules, with no dependencies or build step. GitHub Pages continues to serve each `<name>/index.html` as before.

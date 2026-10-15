@@ -67,6 +67,8 @@
 .qr-download-row { display:flex; align-items:center; justify-content:space-between; gap:20px; }
 .qr-download-row .primary { width:210px; }
 .qr-private-note { font-size:9px; line-height:1.8; color:var(--muted); margin-bottom:0; }
+#qr-profile { margin:18px 0; padding:16px; border:1px solid var(--accent-border); border-radius:8px; background:var(--accent-soft); }
+#qr-save-profile { margin-top:10px; width:100%; }
 @media (max-width:1150px) { .row-actions { flex-direction:column; } }
 @media (max-width:900px) { .qr-dialog { width:calc(100vw - 32px); } .qr-layout { grid-template-columns:36% minmax(0,1fr); } .qr-preview-panel { padding:24px 18px; } .qr-controls { padding:0 22px; } .qr-corner-grid { grid-template-columns:1fr; } .qr-preview-label { margin-bottom:30px; } }
 @media (max-width:650px) {

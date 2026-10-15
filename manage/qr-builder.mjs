@@ -7,6 +7,8 @@ let version = 0;
 let timer;
 let current = null;
 let downloading = false;
+let saveHandler = null;
+let savingProfile = false;
 const $ = id => document.getElementById(id);
 
 function loadLibrary() {
@@ -47,7 +49,7 @@ function mount() {
           <div class="qr-corner-grid">${shapes('qr-border','Corner border',[['square','Square'],['extra-rounded','Rounded']])}${shapes('qr-center','Corner center',[['square','Square'],['dot','Circle']])}</div>
         </div>
         <div class="qr-section qr-export"><div class="qr-step">03 <span>Ready to share</span></div><div class="qr-export-options"><div><label for="qr-format">File format</label><select id="qr-format"><option value="svg">SVG · vector</option><option value="png">PNG · image</option><option value="jpeg">JPG · image</option></select></div><div><label for="qr-size">Export dimensions</label><select id="qr-size"><option value="512">512 × 512</option><option value="1024" selected>1024 × 1024</option><option value="2048">2048 × 2048</option></select></div></div>
-          <p id="qr-quality" class="qr-quality" role="status"></p><p id="qr-error" class="form-error hidden" role="alert"></p><div class="qr-download-row"><button class="text-button" id="qr-reset">Reset style</button><button class="button primary" id="qr-download" disabled>Download SVG <span>↓</span></button></div><p class="qr-private-note">Generated in your browser. Your URL is never sent to a QR service.</p>
+          <p id="qr-quality" class="qr-quality" role="status"></p><p id="qr-error" class="form-error hidden" role="alert"></p><div id="qr-profile" class="hidden"><label for="qr-design-title">Design name</label><input id="qr-design-title" maxlength="100" placeholder="Name this QR design"><button class="button secondary" id="qr-save-profile" type="button">Save to my profile</button></div><div class="qr-download-row"><button class="text-button" id="qr-reset">Reset style</button><button class="button primary" id="qr-download" disabled>Download SVG <span>↓</span></button></div><p class="qr-private-note">Generated in your browser. Your URL is never sent to a QR service.</p>
         </div>
       </section>
     </div>`;
@@ -76,6 +78,19 @@ function mount() {
   $('qr-size').addEventListener('change',()=>{ if(current)current.size=Number($('qr-size').value); });
   $('qr-reset').addEventListener('click',()=>{resetStyle();schedule();});
   $('qr-download').addEventListener('click',download);
+  $('qr-save-profile').addEventListener('click',async()=>{
+    if(!current || !saveHandler || savingProfile)return;
+    const title=$('qr-design-title').value.trim();
+    if(!title){$('qr-error').textContent='Give your QR design a name.';$('qr-error').classList.remove('hidden');return;}
+    savingProfile=true;$('qr-save-profile').disabled=true;
+    const {url,...config}={...current,size:Number($('qr-size').value)};
+    try{
+      await saveHandler({title,url,settings:config});
+      $('qr-quality').textContent='Saved to your profile. You can reopen this design on any device.';
+      $('qr-error').classList.add('hidden');
+    }catch(error){$('qr-error').textContent=error.message||'The design could not be saved.';$('qr-error').classList.remove('hidden');}
+    finally{savingProfile=false;$('qr-save-profile').disabled=false;}
+  });
   resetStyle();
 }
 function resetStyle() {
@@ -105,6 +120,7 @@ function schedule() {
 async function render() {
   const ticket=++version;
   $('qr-download').disabled=true;
+  $('qr-save-profile').disabled=true;
   $('qr-error').classList.add('hidden');
   try {
     const config=settings();
@@ -124,6 +140,7 @@ async function render() {
     $('qr-quality').classList.toggle('qr-quality-warning',!safe);
     current=safe?config:null;
     $('qr-download').disabled=!safe || downloading;
+    $('qr-save-profile').disabled=!safe || savingProfile;
   } catch(error) {
     if(ticket!==version)return;
     current=null;$('qr-preview').replaceChildren();$('qr-preview-url').textContent='';
@@ -152,12 +169,26 @@ async function download() {
   } catch(error){$('qr-error').textContent=error.message || 'Export failed. Please try again.';$('qr-error').classList.remove('hidden');}
   finally{downloading=false;$('qr-download').disabled=!current;}
 }
-export async function openQRBuilder({url='',links=[]}={}) {
+export async function openQRBuilder({url='',links=[],onSave=null,design=null}={}) {
   if(!dialog)mount();
-  const selected=url || $('qr-url').value || (links[0]?`${BASE}${links[0].slug}/`:`${BASE}insights/`);
+  saveHandler=onSave;
+  $('qr-profile').classList.toggle('hidden',!onSave);
+  const selected=design?.url || url || $('qr-url').value || (links[0]?(links[0].shortUrl || `${BASE}${links[0].slug}/`):`${BASE}insights/`);
   const select=$('qr-saved');select.replaceChildren(new Option('Use a different URL',''));
-  for(const link of links)select.append(new Option(link.title,`${BASE}${link.slug}/`));
-  $('qr-url').value=selected;select.value=links.some(l=>`${BASE}${l.slug}/`===selected)?selected:'';
+  for(const link of links)select.append(new Option(link.title,link.shortUrl || `${BASE}${link.slug}/`));
+  $('qr-url').value=selected;select.value=links.some(l=>(l.shortUrl || `${BASE}${l.slug}/`)===selected)?selected:'';
+  let defaultTitle='My QR design';
+  try{defaultTitle=qrFilename(selected).replace(/-qr$/,'');}catch{}
+  $('qr-design-title').value=design?.title || defaultTitle;
+  if(design?.settings){
+    const config=design.settings;
+    for(const [name,value]of[['qr-dots',config.dots],['qr-border',config.border],['qr-center',config.center]]){
+      const input=[...dialog.querySelectorAll(`input[name="${name}"]`)].find(el=>el.value===value);if(input)input.checked=true;
+    }
+    if(/^#[0-9a-f]{6}$/i.test(config.foreground))$('qr-foreground').value=config.foreground;
+    if(/^#[0-9a-f]{6}$/i.test(config.background))$('qr-background').value=config.background;
+    if(SIZES.includes(config.size))$('qr-size').value=String(config.size);
+  }
   if(!dialog.open)dialog.showModal();
   downloadLabel();schedule();
 }

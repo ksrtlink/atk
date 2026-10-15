@@ -1,0 +1,17 @@
+{
+  "name": "kearney-link-studio",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && node scripts/check-config.mjs && wrangler deploy",
+    "test": "node --experimental-sqlite scripts/test.mjs",
+    "db:local": "wrangler d1 migrations apply link-studio --local",
+    "db:remote": "wrangler d1 migrations apply link-studio --remote"
+  },
+  "dependencies": { "jose": "6.1.0" },
+  "devDependencies": { "wrangler": "4.92.0" },
+  "engines": { "node": ">=22.13.0" }
+}

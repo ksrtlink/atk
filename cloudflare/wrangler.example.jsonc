@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kearney-link-studio",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-10-15",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "none",
+    "run_worker_first": ["/api/*", "/r/*", "/"]
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "link-studio",
+    "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+    "migrations_dir": "migrations"
+  }],
+  "vars": {
+    "FIREBASE_PROJECT_ID": "",
+    "FIREBASE_API_KEY": "",
+    "PUBLIC_ORIGIN": "",
+    "ALLOWED_EMAIL_DOMAINS": "",
+    "MAX_LINKS_PER_USER": "200",
+    "MAX_DESIGNS_PER_USER": "200"
+  }
+}
