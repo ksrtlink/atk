@@ -1,0 +1,5 @@
+.qa/
+.qa-edge/
+node_modules/
+.env
+.env.*

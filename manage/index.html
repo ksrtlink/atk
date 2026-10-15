@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Create, organize, and share ATK short links.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com https://ksrtlink.github.io; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>ATK — Link studio</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip" href="#library">Skip to links</a>
+  <aside class="sidebar">
+    <a class="brand" href="./" aria-label="ATK Link studio home"><span class="brand-mark">a<span>↗</span></span><span>ATK<span class="brand-sub">LINK STUDIO</span></span></a>
+    <div class="workspace-label">WORKSPACE</div>
+    <a class="nav-item active" href="#library"><span>↗</span> Link library <span class="nav-count" id="nav-count">—</span></a>
+    <button class="nav-item" id="nav-create"><span>＋</span> Create a link</button>
+    <div class="sidebar-bottom">
+      <div class="workspace-card"><span class="workspace-monogram">K</span><div><strong>Kearney links</strong><small>ksrtlink / atk</small></div></div>
+      <button class="connection-button" id="connect"><span class="status-dot"></span><span id="connection-label">Connect GitHub</span><span>↗</span></button>
+      <p class="sidebar-note">One destination. A simpler link.<br>Ready for everywhere you share.</p>
+    </div>
+  </aside>
+  <div class="main-wrap">
+    <header class="topbar"><span>Workspace <span class="breadcrumb">/</span> <strong>Link library</strong></span><a href="https://github.com/ksrtlink/atk" target="_blank" rel="noopener noreferrer">View repository <span>↗</span></a></header>
+    <main>
+      <section class="page-heading"><div><div class="eyebrow">LESS FRICTION. MORE CONNECTION.</div><h1>A shorter way to share<span>.</span></h1><p>All your destinations, neatly in one place.</p></div><div class="total"><strong id="total">—</strong><span>short links</span></div></section>
+      <div class="workspace-grid">
+        <section class="library" id="library" aria-labelledby="library-heading">
+          <div class="section-heading"><h2 id="library-heading">Your links <span id="list-count"></span></h2><button class="text-button" id="refresh">Refresh ↻</button></div>
+          <div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Find a link or destination…" aria-label="Search links"></label><button class="button secondary compact" id="export">Export CSV</button></div>
+          <p class="source-status" id="source-status" role="status">Loading your link library…</p>
+          <div id="links" class="link-list" aria-busy="true"></div>
+          <div class="empty hidden" id="empty"><h3>No matching links</h3><p>Try a different name or destination.</p><button class="text-button" id="clear-search">Clear search</button></div>
+          <div class="library-foot"><span>YOUR LINK STAYS. THE DESTINATION CAN CHANGE.</span><span>↗</span></div>
+        </section>
+        <aside class="composer-wrap">
+          <section class="composer" aria-labelledby="form-heading">
+            <div class="composer-kicker"><span class="small-mark">＋</span><span>A NEW CONNECTION</span></div>
+            <h2 id="form-heading">Make it a short link.</h2><p id="form-description">Paste a destination. Give it a name.<br>We’ll take care of the rest.</p>
+            <form id="link-form">
+              <label for="destination">Destination URL</label><input id="destination" name="destination" type="url" placeholder="https://www.kearney.com/…" required maxlength="4096" autocomplete="off"><span class="field-hint">The website people will land on.</span>
+              <label for="slug">Short link name</label><input id="slug" name="slug" type="text" placeholder="e.g. new-perspectives" required maxlength="64" pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off" spellcheck="false"><span class="field-hint">Lowercase letters, numbers, and hyphens.</span>
+              <div class="link-preview"><span>YOUR SHORT LINK</span><output id="preview" for="slug">ksrtlink.github.io/atk/<strong>your-name/</strong></output></div>
+              <p class="form-error hidden" id="form-error" role="alert"></p>
+              <button class="button primary" type="submit" id="submit">Create short link <span>↗</span></button>
+              <button class="text-button hidden cancel-edit" type="button" id="cancel-edit">Cancel editing</button>
+              <p class="form-note" id="form-note">Connect GitHub to publish. Browsing is open to everyone.</p>
+            </form>
+          </section>
+          <section class="result hidden" id="result" aria-live="polite"><span class="eyebrow">SAVED TO GITHUB</span><h3 id="result-heading">Your link is on its way.</h3><p id="publish-status">GitHub Pages is publishing your redirect.</p><a id="result-link" target="_blank" rel="noopener noreferrer"></a><div class="result-actions"><button class="button secondary compact" id="copy-result">Copy link</button><button class="text-button" id="check-publish">Check publishing</button></div><a class="commit-link" id="commit-link" target="_blank" rel="noopener noreferrer">View saved change ↗</a></section>
+          <div class="tip"><span class="tip-index">01 / GOOD TO KNOW</span><p>Already printed the QR code?<br>Edit the destination, keep the link.</p><small>Your existing QR codes keep working.</small></div>
+        </aside>
+      </div>
+      <footer><span>ATK <span class="footer-dot">·</span> Link studio</span><span>Small links. Lasting connections.</span></footer>
+    </main>
+  </div>
+  <dialog id="connection-dialog" aria-labelledby="connect-heading">
+    <div class="dialog-top"><span class="eyebrow">YOUR WORKSPACE CONNECTION</span><button class="icon-button" id="close-connect" aria-label="Close connection settings">×</button></div>
+    <h2 id="connect-heading">Connect to GitHub.</h2><p>Create and update links in <strong>ksrtlink/atk</strong>.</p>
+    <div id="connected-state" class="hidden"><p id="connected-as"></p><button class="button secondary" id="disconnect">Disconnect this tab</button></div>
+    <form id="connect-form"><label for="token">Fine-grained access token</label><input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" required><p class="field-hint">Kept only in this tab’s memory. Cleared on refresh or disconnect.</p><p id="connect-error" class="form-error hidden" role="alert"></p><button class="button primary" id="connect-submit">Connect workspace <span>↗</span></button></form>
+    <details><summary>How to get a token</summary><ol><li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">GitHub token settings ↗</a>.</li><li>Choose resource owner <strong>ksrtlink</strong> and only the <strong>atk</strong> repository.</li><li>Give <strong>Contents: Read and write</strong> permission and set a short expiration.</li><li>Generate the token and paste it above.</li></ol><p>Your GitHub account must have write access. Branch rules still apply. Never share your token.</p></details>
+  </dialog>
+  <div id="toast" class="toast hidden" role="status"></div>
+</body>
+</html>
