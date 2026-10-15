@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Create, organize, and share ATK short links.">
+  <meta name="description" content="Create, organize, and share Kearney short links.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com https://ksrtlink.github.io; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
-  <title>ATK — Link studio</title>
+  <title>Kearney — Link studio</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.mjs"></script>
 </head>
 <body>
   <a class="skip" href="#library">Skip to links</a>
   <aside class="sidebar">
-    <a class="brand" href="./" aria-label="ATK Link studio home"><span class="brand-mark">a<span>↗</span></span><span>ATK<span class="brand-sub">LINK STUDIO</span></span></a>
+    <a class="brand" href="./" aria-label="Kearney Link studio home"><img class="brand-logo" src="./kearney-logo.svg" alt="Kearney" width="155" height="17"><span class="brand-sub">LINK STUDIO</span></a>
     <div class="workspace-label">WORKSPACE</div>
     <a class="nav-item active" href="#library"><span>↗</span> Link library <span class="nav-count" id="nav-count">—</span></a>
     <button class="nav-item" id="nav-create"><span>＋</span> Create a link</button>
@@ -39,7 +39,7 @@
         <aside class="composer-wrap">
           <section class="composer" aria-labelledby="form-heading">
             <div class="composer-kicker"><span class="small-mark">＋</span><span>A NEW CONNECTION</span></div>
-            <h2 id="form-heading">Make it a short link.</h2><p id="form-description">Paste a destination. Give it a name.<br>We’ll take care of the rest.</p>
+            <h2 id="form-heading">Make it a short link.</h2><p id="form-description">Paste a destination. Give it a name.<br> We’ll take care of the rest.</p>
             <form id="link-form">
               <label for="destination">Destination URL</label><input id="destination" name="destination" type="url" placeholder="https://www.kearney.com/…" required maxlength="4096" autocomplete="off"><span class="field-hint">The website people will land on.</span>
               <label for="slug">Short link name</label><input id="slug" name="slug" type="text" placeholder="e.g. new-perspectives" required maxlength="64" pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off" spellcheck="false"><span class="field-hint">Lowercase letters, numbers, and hyphens.</span>
@@ -54,7 +54,7 @@
           <div class="tip"><span class="tip-index">01 / GOOD TO KNOW</span><p>Already printed the QR code?<br>Edit the destination, keep the link.</p><small>Your existing QR codes keep working.</small></div>
         </aside>
       </div>
-      <footer><span>ATK <span class="footer-dot">·</span> Link studio</span><span>Small links. Lasting connections.</span></footer>
+      <footer><span>Kearney <span class="footer-dot">·</span> Link studio</span><span>Small links. Lasting connections.</span></footer>
     </main>
   </div>
   <dialog id="connection-dialog" aria-labelledby="connect-heading">

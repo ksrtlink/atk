@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 154.8 16.93">
+  <!-- Generator: Adobe Illustrator 29.8.4, SVG Export Plug-In . SVG Version: 2.1.1 Build 6)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #1e1e1e;
+      }
+
+      .st1 {
+        fill: url(#linear-gradient);
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="128.53" y1="2.3" x2="148.43" y2="22.1" gradientTransform="translate(0 22.06) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffad8e"/>
+      <stop offset=".1" stop-color="#f5a393"/>
+      <stop offset=".4" stop-color="#dc8aa1"/>
+      <stop offset=".6" stop-color="#b460b9"/>
+      <stop offset="1" stop-color="#7c27d9"/>
+      <stop offset="1" stop-color="#7823dc"/>
+    </linearGradient>
+  </defs>
+  <g>
+    <path class="st0" d="M41.3,3.03h-3.2l-5.7,13.9h1.8l1.5-3.7h7.7l1.5,3.7h1.9l-5.5-13.9ZM36.5,11.53l2.7-6.8h.9l2.7,6.8h-6.4.1Z"/>
+    <path class="st0" d="M110.1,11.13v5.8h-1.8v-5.8l-6.1-8.1h2.2l4.9,6.4,4.8-6.4h2.1l-6.1,8.1Z"/>
+    <path class="st0" d="M28.7,16.93h-11.4V3.03h11.4v1.6h-9.7v4.5h8.6v1.7h-8.6v4.5h9.7s0,1.6,0,1.6Z"/>
+    <path class="st0" d="M98.6,16.93h-11.4V3.03h11.4v1.6h-9.7v4.5h8.6v1.7h-8.6v4.5h9.7s0,1.6,0,1.6Z"/>
+    <path class="st0" d="M81.1,16.93h-1.6l-9.3-10.8v10.8h-1.8V3.03h1.6l9.3,10.8V3.03h1.8v13.9Z"/>
+    <polygon class="st0" points="12.6 3.03 10.2 3.03 4.2 9.13 1.8 9.13 1.8 3.03 0 3.03 0 16.93 1.8 16.93 1.8 10.83 4.1 10.83 10.2 16.93 12.6 16.93 5.8 10.03 12.6 3.03"/>
+    <path class="st0" d="M63.7,16.93l-4.6-6.2c.7,0,1-.1,1-.1,1.7-.5,2.8-1.9,2.8-3.7s-1.7-3.9-4.9-3.9h-6.8v13.9h1.7v-6.1h4l4.6,6.1h2.2ZM52.9,4.63h5c2,0,3.1.8,3.1,2.2s-1,2.2-3.1,2.2h-5v-4.4Z"/>
+  </g>
+  <path class="st1" d="M125.5,5.73l-2.9,2v-2.2l3.1-2.2h2.3v13.5h-2.5V5.73ZM130.1,10.33v-.7c0-4.1,2.3-6.6,5.7-6.6s5.7,2.5,5.7,6.6v.7c0,4.1-2.1,6.7-5.7,6.7s-5.7-2.5-5.7-6.6v-.1ZM139,10.33v-.7c0-2.9-1.1-4.6-3.1-4.6s-3.2,1.6-3.2,4.6v.7c0,3.1,1.2,4.6,3.2,4.6s3.1-1.6,3.1-4.7v.1ZM143.4,10.33v-.7c0-4.1,2.3-6.6,5.7-6.6s5.7,2.5,5.7,6.6v.7c0,4.1-2.1,6.7-5.7,6.7s-5.7-2.5-5.7-6.6v-.1ZM152.2,10.33v-.7c0-2.9-1.1-4.6-3.1-4.6s-3.2,1.6-3.2,4.6v.7c0,3.1,1.2,4.6,3.2,4.6s3.1-1.6,3.1-4.7v.1Z"/>
+  <metadata>
+    <sfw xmlns="http://ns.adobe.com/SaveForWeb/1.0/">
+      <slices/>
+      <sliceSourceBounds x="0" y="-0.1" width="154.8" height="14" bottomLeftOrigin="true"/>
+    </sfw>
+  </metadata>
+</svg>
