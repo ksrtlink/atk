@@ -4,11 +4,11 @@ const project=new URL('../',import.meta.url),source=new URL('../manage/',project
 await mkdir(output,{recursive:true});
 for(const file of ['styles.css','core.mjs','qr-core.mjs','qr-builder.mjs','qr-builder.css','links.json','vendor'])await cp(new URL(file,source),new URL(file,output),{recursive:true});
 await rm(new URL('kearney-logo.svg',output),{force:true});
-for(const file of ['app.mjs','auth.mjs','accounts.css','tinytrail.css'])await cp(new URL(`ui/${file}`,project),new URL(file,output));
+for(const file of ['app.mjs','auth.mjs','accounts.css','tinytrail.css','tinytrail-logo.svg','tinytrail-icon.svg'])await cp(new URL(`ui/${file}`,project),new URL(file,output));
 let html=await readFile(new URL('index.html',source),'utf8');
 html=html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/,'<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\'; style-src \'self\'; connect-src \'self\' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src \'self\' data: blob:; object-src \'none\'; base-uri \'none\'; form-action \'none\'">');
-html=html.replace('<link rel="stylesheet" href="./qr-builder.css">','<link rel="stylesheet" href="./qr-builder.css"><link rel="stylesheet" href="./accounts.css"><link rel="stylesheet" href="./tinytrail.css">');
-html=html.replace(/<a class="brand"[\s\S]*?<\/a>/,'<a class="brand" href="./" aria-label="TinyTrail home"><span class="tinytrail-wordmark"><span class="tinytrail-symbol" aria-hidden="true">↗</span>TinyTrail</span><span class="brand-sub">LINKS &amp; QR</span></a>');
+html=html.replace('<link rel="stylesheet" href="./qr-builder.css">','<link rel="stylesheet" href="./qr-builder.css"><link rel="stylesheet" href="./accounts.css"><link rel="stylesheet" href="./tinytrail.css?v=kumo-1"><link rel="icon" type="image/svg+xml" href="./tinytrail-icon.svg">');
+html=html.replace(/<a class="brand"[\s\S]*?<\/a>/,'<a class="brand" href="./" aria-label="TinyTrail home"><img class="brand-logo" src="./tinytrail-logo.svg" width="170" height="36" alt="TinyTrail"><span class="brand-sub">LINKS &amp; QR</span></a>');
 html=html.replaceAll('Kearney — Link studio','TinyTrail — Short links & QR codes').replace('Create, organize, and share Kearney short links.','Create short links and print-ready QR codes. Your own library, on any device.');
 html=html.replace('Kearney links','TinyTrail workspace').replace('<span class="workspace-monogram">K</span>','<span class="workspace-monogram">T</span>');
 html=html.replace('https://www.kearney.com/…','https://example.com/your-page');
