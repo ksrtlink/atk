@@ -23,7 +23,17 @@ Public read API requests are rate limited by GitHub. Connecting raises the appli
 
 Keep the existing Pages source pointing at `main` / repository root. The manager is an additional `/manage/` page; the main `index.html` remains its existing redirect. GitHub Pages has no application server. This version therefore uses a user-supplied, in-memory token rather than storing a shared write credential. A future GitHub App and small backend can replace the token step with sign-in; agent connector authorization does not transfer to website visitors.
 
-QR styling/export is a separate future phase. This release creates the stable URLs to encode.
+## QR code builder
+
+Click **QR** beside any short link, **QR builder** above the library, or **QR code builder** in the sidebar. No GitHub authentication is needed to generate codes. The builder also accepts a different HTTP/HTTPS URL.
+
+Features include six dot styles, two corner-border styles, two corner-center styles, Kearney color presets, custom foreground/background colors, and SVG/PNG/JPG downloads at 512, 1024, or 2048 pixels. SVG remains vector artwork. The preview and exports encode the exact displayed URL. Downloads include a solid background in all formats, including JPEG.
+
+The renderer is the pinned MIT-licensed **QR Code Styling 1.9.2** browser bundle, loaded locally only when the designer opens. See `manage/vendor/README.md` and adjacent license notices. No QR API, CDN request, tracking redirect, or server is involved in QR generation. Styling happens entirely in the browser and does not modify the repository.
+
+The builder uses high error correction and a clear margin sufficient for at least four QR modules. It blocks export for low-contrast or inverted color pairs and rejects unsafe protocols and overly long URLs. Physical print size, paper, lighting, and scanner behavior still matter: scan-test the downloaded file before printing. Raster exports and all 24 offered style combinations are verified during development with independent jsQR and ZXing decoders (ZXing is used when jsQR cannot locate a styled finder). A circular outer corner border was excluded after failing the initial scan test.
+
+Core QR validation checks: `node tests/qr-core.test.mjs`. Browser/export checks are in `tests/qr-browser-qa.mjs` and require a local HTTP server, a headless Chromium browser with remote debugging at port 9226, the test-only `jsqr@1.4.0` distribution at `.qa/jsQR.js`, and the `@zxing/library@0.21.3` UMD bundle at `.qa/zxing.js`. Neither test decoder is included in the deployed site.
 
 ## Local development
 

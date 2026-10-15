@@ -125,7 +125,10 @@ function render() {
     const edit = make('button', 'edit-button', 'Edit');
     edit.setAttribute('aria-label', `Edit ${link.title} destination`);
     edit.addEventListener('click', () => editLink(link));
-    actions.append(copy, edit);
+    const qr = make('button', 'qr-button', 'QR');
+    qr.setAttribute('aria-label', `Create QR code for ${link.title}`);
+    qr.addEventListener('click', () => openQR(`${BASE}${link.slug}/`));
+    actions.append(qr, copy, edit);
     row.append(make('span', 'link-index', String(i+1).padStart(2,'0')), body, actions);
     $('links').append(row);
   }
@@ -297,6 +300,14 @@ $('nav-create').addEventListener('click', () => { resetForm(); $('destination').
 $('clear-search').addEventListener('click', () => { $('search').value = ''; render(); $('search').focus(); });
 $('copy-result').addEventListener('click', () => publishing && copyText(`${BASE}${publishing.slug}/`));
 $('check-publish').addEventListener('click', checkPublishing);
+async function openQR(url = '') {
+  try {
+    const { openQRBuilder } = await import('./qr-builder.mjs');
+    await openQRBuilder({ url, links });
+  } catch { notify('The QR builder could not load. Refresh the page and try again.'); }
+}
+$('nav-qr').addEventListener('click', () => openQR());
+$('open-qr').addEventListener('click', () => openQR());
 // A back/forward cached tab must not retain a connection after leaving the manager.
 window.addEventListener('pagehide', () => { token = ''; connectedLogin = ''; });
 window.addEventListener('pageshow', connectionUI);

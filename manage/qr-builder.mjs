@@ -1,0 +1,163 @@
+import { BASE } from './core.mjs';
+import { qrURL, qrOptions, qrFilename, colorQuality, FORMATS, SIZES } from './qr-core.mjs';
+
+let dialog;
+let libraryPromise;
+let version = 0;
+let timer;
+let current = null;
+let downloading = false;
+const $ = id => document.getElementById(id);
+
+function loadLibrary() {
+  if (window.QRCodeStyling) return Promise.resolve(window.QRCodeStyling);
+  if (!libraryPromise) libraryPromise = new Promise((resolve,reject) => {
+    const script = document.createElement('script');
+    script.src = new URL('./vendor/qr-code-styling-1.9.2.js', import.meta.url).href;
+    script.onload = () => window.QRCodeStyling ? resolve(window.QRCodeStyling) : reject(new Error('QR library unavailable.'));
+    script.onerror = () => { script.remove(); libraryPromise = null; reject(new Error('Could not load the QR library. Refresh and try again.')); };
+    document.head.append(script);
+  });
+  return libraryPromise;
+}
+function shapes(name, title, values) {
+  return `<fieldset class="qr-shapes"><legend>${title}</legend><div class="qr-shape-options">${values.map(([value,label],i)=>`<label class="qr-shape"><input type="radio" name="${name}" value="${value}" ${i===0?'checked':''}><span class="qr-shape-art ${name} shape-${value}" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>${label}</span></label>`).join('')}</div></fieldset>`;
+}
+function mount() {
+  dialog = document.createElement('dialog');
+  dialog.id = 'qr-dialog'; dialog.className = 'qr-dialog';
+  dialog.setAttribute('aria-labelledby','qr-heading');
+  // Static interface markup only. URL and repository values are assigned using textContent/value.
+  dialog.innerHTML = `
+    <div class="qr-header"><div><div class="eyebrow">LINK STUDIO / QR DESIGNER</div><h2 id="qr-heading">A code worth sharing.</h2></div><button class="icon-button" id="qr-close" aria-label="Close QR builder">×</button></div>
+    <div class="qr-layout">
+      <section class="qr-preview-panel" aria-label="QR code preview">
+        <div class="qr-preview-label"><span class="eyebrow">LIVE PREVIEW</span><span id="qr-preview-tag">SVG</span></div>
+        <div class="qr-board" id="qr-preview" aria-label="QR preview" role="img"></div>
+        <p id="qr-preview-url" class="qr-preview-url"></p>
+        <p class="qr-scan-note">Scan with your phone before printing.</p>
+        <div class="qr-preview-foot"><span>MADE TO CONNECT</span><span>↗</span></div>
+      </section>
+      <section class="qr-controls" aria-label="QR code settings">
+        <div class="qr-section"><div class="qr-step">01 <span>Choose your link</span></div><label for="qr-saved">From your link library</label><select id="qr-saved"><option value="">Use a different URL</option></select><label for="qr-url">URL to encode</label><input id="qr-url" type="url" maxlength="4096" placeholder="https://…" spellcheck="false" autocomplete="off"><p class="field-hint">The QR code opens this exact URL. No GitHub connection needed.</p></div>
+        <div class="qr-section"><div class="qr-step">02 <span>Make it yours</span></div>
+          <div class="qr-colors"><div><label for="qr-foreground">Code color</label><div class="qr-color-input"><input id="qr-foreground" type="color"><output id="qr-color-value"></output></div></div><div><label for="qr-background">Background</label><div class="qr-color-input"><input id="qr-background" type="color"><output id="qr-bg-value"></output></div></div></div>
+          <div class="qr-swatches" id="qr-swatches" aria-label="Kearney code color presets"></div>
+          ${shapes('qr-dots','Dot shape',[['square','Square'],['dots','Dots'],['rounded','Rounded'],['extra-rounded','Soft'],['classy','Classy'],['classy-rounded','Classy soft']])}
+          <div class="qr-corner-grid">${shapes('qr-border','Corner border',[['square','Square'],['extra-rounded','Rounded']])}${shapes('qr-center','Corner center',[['square','Square'],['dot','Circle']])}</div>
+        </div>
+        <div class="qr-section qr-export"><div class="qr-step">03 <span>Ready to share</span></div><div class="qr-export-options"><div><label for="qr-format">File format</label><select id="qr-format"><option value="svg">SVG · vector</option><option value="png">PNG · image</option><option value="jpeg">JPG · image</option></select></div><div><label for="qr-size">Export dimensions</label><select id="qr-size"><option value="512">512 × 512</option><option value="1024" selected>1024 × 1024</option><option value="2048">2048 × 2048</option></select></div></div>
+          <p id="qr-quality" class="qr-quality" role="status"></p><p id="qr-error" class="form-error hidden" role="alert"></p><div class="qr-download-row"><button class="text-button" id="qr-reset">Reset style</button><button class="button primary" id="qr-download" disabled>Download SVG <span>↓</span></button></div><p class="qr-private-note">Generated in your browser. Your URL is never sent to a QR service.</p>
+        </div>
+      </section>
+    </div>`;
+  document.body.append(dialog);
+  const palette = getComputedStyle(document.documentElement);
+  for (const name of ['slate','purple','blue','pink']) {
+    const color = palette.getPropertyValue(`--brand-${name}`).trim();
+    const button = document.createElement('button');
+    button.type='button'; button.className=`qr-swatch swatch-${name}`;
+    button.setAttribute('aria-label',`Use Kearney ${name} code color`);
+    button.title=`Kearney ${name} · ${color}`;
+    button.dataset.color=color.toLowerCase();
+    button.addEventListener('click',()=>{ $('qr-foreground').value=color; schedule(); });
+    $('qr-swatches').append(button);
+  }
+  $('qr-close').addEventListener('click',()=>dialog.close());
+  dialog.addEventListener('close',()=>{ clearTimeout(timer);version++;current=null; });
+  $('qr-saved').addEventListener('change',()=>{ if($('qr-saved').value){$('qr-url').value=$('qr-saved').value;schedule();} });
+  $('qr-url').addEventListener('input',()=>{
+    $('qr-saved').value=[...$('qr-saved').options].some(o=>o.value===$('qr-url').value)?$('qr-url').value:'';
+    schedule();
+  });
+  for(const id of ['qr-foreground','qr-background']) $(id).addEventListener('input',schedule);
+  dialog.querySelectorAll('input[type=radio]').forEach(el=>el.addEventListener('change',schedule));
+  $('qr-format').addEventListener('change',downloadLabel);
+  $('qr-size').addEventListener('change',()=>{ if(current)current.size=Number($('qr-size').value); });
+  $('qr-reset').addEventListener('click',()=>{resetStyle();schedule();});
+  $('qr-download').addEventListener('click',download);
+  resetStyle();
+}
+function resetStyle() {
+  const palette=getComputedStyle(document.documentElement);
+  $('qr-foreground').value=palette.getPropertyValue('--brand-slate').trim();
+  $('qr-background').value=palette.getPropertyValue('--brand-white').trim();
+  for(const name of ['qr-dots','qr-border','qr-center'])dialog.querySelector(`input[name="${name}"][value="square"]`).checked=true;
+}
+function settings() {
+  return {url:qrURL($('qr-url').value),foreground:$('qr-foreground').value,background:$('qr-background').value,
+    dots:dialog.querySelector('[name=qr-dots]:checked').value,border:dialog.querySelector('[name=qr-border]:checked').value,
+    center:dialog.querySelector('[name=qr-center]:checked').value,size:Number($('qr-size').value)};
+}
+function downloadLabel() {
+  const label=$('qr-format').value==='jpeg'?'JPG':$('qr-format').value.toUpperCase();
+  $('qr-download').replaceChildren(document.createTextNode(`Download ${label}`),Object.assign(document.createElement('span'),{textContent:'↓'}));
+  $('qr-preview-tag').textContent=label;
+}
+function schedule() {
+  version++;current=null;clearTimeout(timer);$('qr-download').disabled=true;
+  // Never show an old QR after its URL or appearance has changed.
+  $('qr-preview').replaceChildren();
+  $('qr-preview').setAttribute('aria-busy','true');
+  $('qr-quality').textContent='Updating preview…';
+  timer=setTimeout(render,160);
+}
+async function render() {
+  const ticket=++version;
+  $('qr-download').disabled=true;
+  $('qr-error').classList.add('hidden');
+  try {
+    const config=settings();
+    $('qr-color-value').textContent=config.foreground.toUpperCase();
+    $('qr-bg-value').textContent=config.background.toUpperCase();
+    dialog.querySelectorAll('.qr-swatch').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.color===config.foreground.toLowerCase())));
+    const quality=colorQuality(config.foreground,config.background);
+    const safe=quality.darkOnLight && quality.contrast>=4.5;
+    const QR=await loadLibrary();
+    const qr=new QR(qrOptions({...config,size:320}));
+    await qr.getRawData('svg');
+    if(ticket!==version || !dialog.open)return;
+    $('qr-preview').replaceChildren();qr.append($('qr-preview'));
+    $('qr-preview').setAttribute('aria-label',`QR code for ${config.url}`);
+    $('qr-preview-url').textContent=config.url;
+    $('qr-quality').textContent=safe?'Dark-on-light contrast · Clear border · High error correction':!quality.darkOnLight?'Choose a darker code color than the background.':'This color pair is too light to export. Choose a darker code color or a lighter background.';
+    $('qr-quality').classList.toggle('qr-quality-warning',!safe);
+    current=safe?config:null;
+    $('qr-download').disabled=!safe || downloading;
+  } catch(error) {
+    if(ticket!==version)return;
+    current=null;$('qr-preview').replaceChildren();$('qr-preview-url').textContent='';
+    $('qr-quality').classList.remove('qr-quality-warning');
+    $('qr-quality').textContent='Enter a valid URL to generate a QR code.';
+    $('qr-error').textContent=error instanceof Error?error.message:'This URL could not be encoded. Try a shorter link.';
+    $('qr-error').classList.remove('hidden');
+  } finally { if(ticket===version)$('qr-preview').setAttribute('aria-busy','false'); }
+}
+async function download() {
+  if(!current || downloading)return;
+  downloading=true;$('qr-download').disabled=true;
+  const config={...current,size:Number($('qr-size').value)};
+  const format=$('qr-format').value;
+  try {
+    if(!FORMATS[format] || !SIZES.includes(config.size))throw new Error('Choose a valid export format and size.');
+    const QR=await loadLibrary();const qr=new QR(qrOptions(config));
+    const blob=await qr.getRawData(format);
+    if(!(blob instanceof Blob) || !blob.size || !blob.type.startsWith(FORMATS[format]))throw new Error('The image could not be exported. Please try again.');
+    const objectURL=URL.createObjectURL(blob);
+    const anchor=document.createElement('a');anchor.href=objectURL;
+    anchor.download=`${qrFilename(config.url)}.${format==='jpeg'?'jpg':format}`;
+    document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(objectURL),30000);
+    $('qr-quality').textContent=`${format==='jpeg'?'JPG':format.toUpperCase()} exported at ${config.size} × ${config.size}. Scan-test the downloaded file before printing.`;
+  } catch(error){$('qr-error').textContent=error.message || 'Export failed. Please try again.';$('qr-error').classList.remove('hidden');}
+  finally{downloading=false;$('qr-download').disabled=!current;}
+}
+export async function openQRBuilder({url='',links=[]}={}) {
+  if(!dialog)mount();
+  const selected=url || $('qr-url').value || (links[0]?`${BASE}${links[0].slug}/`:`${BASE}insights/`);
+  const select=$('qr-saved');select.replaceChildren(new Option('Use a different URL',''));
+  for(const link of links)select.append(new Option(link.title,`${BASE}${link.slug}/`));
+  $('qr-url').value=selected;select.value=links.some(l=>`${BASE}${l.slug}/`===selected)?selected:'';
+  if(!dialog.open)dialog.showModal();
+  downloadLabel();schedule();
+}
