@@ -170,6 +170,16 @@ try {
   assert.equal(await ev("getComputedStyle(document.getElementById('assigned-company')).display"), "none");
   assert.equal(await ev("fetch('/manage/links.json').then(r=>r.status)"), 404);
   await login("alice");
+  await wait("document.getElementById('page-title').textContent.includes('personal')");
+  assert.equal(await ev("document.getElementById('open-qr').disabled"),false);
+  assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"),"none");
+  await fill("destination","https://example.com/personal");
+  await fill("slug","my-private-browser-link");
+  await ev("document.getElementById('link-form').requestSubmit()");
+  await wait("document.getElementById('links').innerText.includes('my-private-browser-link')");
+  await shot("personal-desktop",1440,1000);
+  await shot("personal-mobile",390,844);
+  await click("request-company");
   await fill("company-name", "Northstar Company");
   await fill("company-website", "https://example.com");
   await fill("company-use", "Reports and events");
@@ -210,6 +220,21 @@ try {
   assert.deepEqual(await ev("({accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),radius:getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()})"), theme);
   const forged = await ev(`fetch('/api/links',{headers:{Authorization:${JSON.stringify("Bearer " + tokens.alice.idToken)},'X-Workspace-Id':'tinytrail-internal'}}).then(r=>r.status)`);
   assert.equal(forged,403);
+  await click("personal-open");
+  await wait("document.getElementById('page-title').textContent.includes('personal') && document.getElementById('links').innerText.includes('my-private-browser-link')");
+  await click("open-qr");
+  await wait("document.getElementById('qr-dialog')?.open");
+  await ev("document.getElementById('qr-mode').value='static';document.getElementById('qr-mode').dispatchEvent(new Event('change'))");
+  await fill("qr-url","https://example.com/my-private-qr");
+  await fill("qr-design-title","My private QR");
+  await wait("!document.getElementById('qr-download').disabled");
+  await click("qr-save-profile");
+  await wait("document.getElementById('designs').innerText.includes('My private QR')");
+  await click("qr-close");
+  await click("company-open");
+  await wait("document.getElementById('workspace-label').textContent==='Northstar Company'");
+  assert.equal(await ev("document.getElementById('designs').innerText.includes('My private QR')"),false);
+
 
   await click("open-qr");
   await wait("document.getElementById('qr-dialog')?.open");

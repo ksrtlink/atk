@@ -1,12 +1,12 @@
 # TinyTrail company pilot
 
-The public landing page is served at `/`. The company studio is `/manage/`.
+The public landing page is served at `/`. The personal and company studio is `/manage/`.
 
 ## Access and ownership
 
-Firebase verifies email identities; Cloudflare D1 stores company membership and company-owned libraries. Company workspaces require platform approval. A platform administrator configured in `ADMIN_EMAILS` receives a TinyTrail internal workspace and the Platform admin navigation item. Admins approve company requests. Company owners generate email-bound, single-use invitation links that expire after seven days; TinyTrail does not send invitation emails.
+Firebase verifies email identities; Cloudflare D1 stores company membership and company-owned libraries. Verified individuals automatically receive a private personal workspace without company approval. Shared company workspaces require platform approval or an exact-email invitation. A platform administrator configured in `ADMIN_EMAILS` receives a TinyTrail internal workspace and the Platform admin navigation item. Admins approve company requests. Company owners generate email-bound, single-use invitation links that expire after seven days; TinyTrail does not send invitation emails.
 
-Ordinary accounts have one assigned company, which opens automatically without a company picker. The server derives that company from membership when no header is supplied and rejects attempts to select a different one. Another invitation or pending company request cannot assign a second company. Conflicting old assignments fail closed for platform-admin review; no records are deleted. Only platform admins may switch, and only between their explicit memberships. Admin requests still require `X-Workspace-Id`. Every private request checks current membership. Owners manage members; company members can create and edit shared links, designs, and presets. The last owner cannot be removed. Original eight links are exposed only through the authenticated platform-admin API; their published redirect addresses remain unchanged. Historical public GitHub files are not made private by this change.
+Ordinary accounts have a private personal workspace and at most one assigned company. They can choose Personal or their assigned Company library, without choosing arbitrary companies. The server derives that company from membership when no header is supplied and rejects attempts to select a different one. Another invitation or pending company request cannot assign a second company. Conflicting old assignments fail closed for platform-admin review; no records are deleted. Only platform admins may switch, and only between their explicit memberships. Admin requests still require `X-Workspace-Id`. Every private request checks current membership. Owners manage members; company members can create and edit shared links, designs, and presets. The last owner cannot be removed. Original eight links are exposed only through the authenticated platform-admin API; their published redirect addresses remain unchanged. Historical public GitHub files are not made private by this change.
 
 Pre-existing personal records remain unassigned. Users see counts, can preview their previous library, and must explicitly confirm transfer into the assigned company. The transfer retains URLs, versions, and design settings. Company members can then see and edit those items.
 
@@ -40,3 +40,7 @@ Export libraries: fflate (MIT), jsPDF (MIT), svg2pdf.js (MIT). QR rendering: qr-
 The landing page and studio now load one `ui/theme.css` palette for TinyTrail orange, neutrals, system typography, 4px corners and semantic interaction colors. QR ink presets are separate from interface accents and existing saved artwork is preserved. Cards use 16px padding. Mobile link panels fill the available width and navigation wraps so all sections remain visible.
 
 Validation: 28 backend regressions plus desktop/mobile enterprise and analytics browser suites passed. Browser assertions verify matching brand accent/radius tokens, no ordinary company picker, assigned company identity and rejection of a forged company header. Existing individual/bulk QR decoding, exports, opt-in analytics, CSV and sign-out checks passed. Firebase email delivery remains outside the simulated browser harness.
+
+## Personal accounts
+
+See `PERSONAL_ACCOUNTS.md` for migration, limits, privacy and verification. Personal ownership is distinct from company membership and is never converted into a shared company workspace. Joining a company does not move personal content.

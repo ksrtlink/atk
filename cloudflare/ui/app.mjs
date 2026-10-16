@@ -138,7 +138,9 @@ function clearLibrary() {
   bulk?.reset();
   analyticsView?.reset();
 }
+let requestCompany = false;
 function ui() {
+  const personal = workspace?.kind === "personal";
   const user = account();
   $("connect").textContent = user?.email || "Sign in with email";
   $("account-top").textContent = user ? "My account" : "Sign in";
@@ -146,7 +148,7 @@ function ui() {
   $("auth-signedout").classList.toggle("hidden", !!user);
   $("auth-current-email").textContent = user?.email || "";
   $("auth-verified-note").textContent = me
-    ? "Email verified. Company access is managed by your workspace owner."
+    ? "Email verified. Your personal library is private; company access is managed separately."
     : "Verify your email, then refresh verification to continue.";
   $("auth-check").classList.toggle("hidden", !!me);
   $("auth-resend").classList.toggle("hidden", !!me);
@@ -155,27 +157,39 @@ function ui() {
   $("admin-nav").classList.toggle("hidden", !me?.platformAdmin);
   $("access-panel").classList.toggle(
     "hidden",
-    !!workspace || !!me?.accessRequest,
+    !requestCompany || !!me?.accessRequest,
   );
   $("access-form").classList.toggle("hidden", !me);
   $("access-status").textContent = me?.accessRequest
     ? `Your request is ${me.accessRequest.status}.`
     : "";
   $("notice").textContent = !user
-    ? "Sign in with a verified email to request company access."
+    ? "Sign in or create an account, then verify your email to open your private workspace."
     : !me
       ? "Verify your email to continue."
       : !workspace
         ? me.accessRequest
           ? `Company access: ${me.accessRequest.status}. Refresh after your administrator approves the request.`
           : "Request a company workspace, or accept an invitation from your owner."
-        : "";
-  $("workspace-label").textContent = workspace?.name || "Company workspace";
-  const switchable = !!me?.canSwitchCompanies;
+        : personal && me?.accessRequest?.status === "pending" ? "Your personal workspace is ready. Company access: pending approval." : "";
+  $("workspace-label").textContent = workspace?.name || "Your workspace";
+  $("page-title").textContent = !workspace ? "Your link & QR studio." : personal ? "Your personal link studio." : "Your company’s link studio.";
+  $("workspace-description").textContent = personal ? "Private links and QR designs. Ready to share when you are." : "Consistent links. Considered QR codes. Ready for the real world.";
+  $("assigned-company").querySelector(".company-context-label").textContent = personal ? "Your private library" : "Your company";
+  $("library-contexts").classList.toggle("hidden", !workspace || !me?.workspaces.length);
+  $("personal-open").setAttribute("aria-pressed", String(personal));
+  $("company-open").setAttribute("aria-pressed", String(!personal));
+  $("request-company").classList.toggle("hidden", !personal || !!me?.workspaces.length);
+  $("personal-account-note").classList.toggle("hidden", !personal);
+  $("company-members-box").classList.toggle("hidden", personal);
+  document.querySelector('[data-view="team"]').textContent = personal ? "Workspace settings" : "Company & team";
+  document.querySelector('#view-links h2').firstChild.nodeValue = personal ? "Your links " : "Company links ";
+  $("presets-note").textContent = personal ? "Styles saved here are private to your account." : "Styles saved here are shared with your company.";
+  const switchable = !personal && !!me?.canSwitchCompanies;
   $("company-switcher").classList.toggle("hidden", !switchable);
   $("assigned-company").classList.toggle("hidden", !workspace || switchable);
   $("assigned-company-name").textContent = workspace?.name || "";
-  $("assigned-company-role").textContent = workspace ? (workspace.role === "owner" ? "Company owner" : "Team member") : "";
+  $("assigned-company-role").textContent = workspace ? (personal ? "Only you have access" : workspace.role === "owner" ? "Company owner" : "Team member") : "";
   if (me?.companyAccessIssue) {
     $("notice").textContent = "Your company assignment needs review. Contact the platform administrator.";
     $("access-form").classList.add("hidden");
@@ -187,7 +201,10 @@ function ui() {
       !((me?.legacyCounts.links || 0) + (me?.legacyCounts.designs || 0)),
   );
   $("transfer-summary").textContent =
-    `${me?.legacyCounts.links || 0} previous links and ${me?.legacyCounts.designs || 0} previous QR designs are available to transfer into ${workspace?.name || "your company"}.`;
+    `${me?.legacyCounts.links || 0} previous links and ${me?.legacyCounts.designs || 0} previous QR designs are available to transfer into ${workspace?.name || "your workspace"}.`;
+  $("transfer-privacy").textContent = personal ? "Imported items stay private to you. Their URLs will stay the same." : "Transferred items will be visible and editable by all members of this company. Their URLs will stay the same.";
+  $("transfer-confirm-label").textContent = personal ? " I confirm importing these items into my private library." : " I confirm sharing these items with my assigned company.";
+  $("transfer-submit").textContent = personal ? "Import into personal library" : "Transfer to company";
   $("preview").textContent = editing
     ? editing.shortUrl
     : `${config?.publicOrigin || location.origin}/r/${$("slug").value || "your-name"}`;
@@ -292,10 +309,11 @@ async function load() {
     me = result;
     const invite = new URLSearchParams(location.hash.slice(1)).get("invite");
     if (invite) {
-      await api("/api/invitations/accept", {
+      const accepted = await api("/api/invitations/accept", {
         method: "POST",
         body: { token: invite },
       });
+      sessionStorage.setItem("tinytrail.workspace", accepted.workspaceId);
       history.replaceState(null, "", location.pathname);
       me = await api("/api/me");
       message("Invitation accepted. Welcome to your company.");
@@ -305,9 +323,8 @@ async function load() {
       $("workspace-select").append(new Option(w.name, w.id));
     if (!me.workspaces.length)
       $("workspace-select").append(new Option("No approved company", ""));
-    workspace = (me.canSwitchCompanies
-      ? me.workspaces.find(w => w.id === sessionStorage.getItem("tinytrail.workspace")) || me.workspaces[0]
-      : me.workspaces.find(w => w.id === me.assignedWorkspaceId) || me.workspaces[0]) || null;
+    const available = [me.personalWorkspace, ...me.workspaces].filter(Boolean);
+    workspace = available.find(w => w.id === sessionStorage.getItem("tinytrail.workspace")) || me.workspaces.find(w => w.id === me.assignedWorkspaceId) || me.workspaces[0] || me.personalWorkspace;
     if (workspace) $("workspace-select").value = workspace.id;
     ui();
     if (workspace) await refreshLibrary();
@@ -332,7 +349,7 @@ async function refreshLibrary() {
   render();
   const info = await api("/api/workspace");
   $("allowance").textContent =
-    `${links.length} / ${info.limits.links} company links · ${designs.length} / ${info.limits.designs} saved QR designs`;
+    `${links.length} / ${info.limits.links} ${workspace.kind === "personal" ? "personal" : "company"} links · ${designs.length} / ${info.limits.designs} saved QR designs`;
   await renderTeam(info);
   if (bulk) await bulk.refresh();
 }
@@ -356,15 +373,15 @@ async function renderTeam(info) {
     }
     $("members").append(row);
   }
-  $("invite-form").classList.toggle("hidden", workspace.role !== "owner");
+  $("invite-form").classList.toggle("hidden", workspace.role !== "owner" || workspace.kind === "personal");
   $("presets").replaceChildren();
   for (const p of presets)
     $("presets").append(node("div", "list-item", p.name));
-  if (!presets.length) $("presets").textContent = "No company presets yet.";
+  if (!presets.length) $("presets").textContent = "No saved presets yet.";
 }
 async function openQR(url = "", design = null) {
   if (!workspace)
-    throw Error("Join an approved company before creating QR codes.");
+    throw Error("Sign in and verify your email before creating QR codes.");
   const { openQRBuilder } = await import("./qr-builder.mjs");
   const asset = design?.trackedQrId
     ? (await api("/api/tracked-qrs/" + design.trackedQrId)).asset
@@ -588,6 +605,19 @@ $("workspace-select").onchange = act(async () => {
   await refreshLibrary();
   if (view === "admin") await adminView();
 });
+async function changeContext(next) {
+  if (!next) return;
+  epoch++;
+  workspace = next;
+  sessionStorage.setItem("tinytrail.workspace", next.id);
+  clearLibrary();
+  ui();
+  await refreshLibrary();
+  await setView(view === "admin" ? "links" : view);
+}
+$("personal-open").onclick = act(() => changeContext(me?.personalWorkspace));
+$("company-open").onclick = act(() => changeContext(me?.workspaces.find(w => w.id === me.assignedWorkspaceId) || me?.workspaces[0]));
+$("request-company").onclick = () => { requestCompany = !requestCompany; ui(); if (requestCompany) $("access-panel").scrollIntoView({block:"start",behavior:"smooth"}); };
 $("access-refresh").onclick = act(load);
 $("access-form").onsubmit = act(async (e) => {
   e.preventDefault();

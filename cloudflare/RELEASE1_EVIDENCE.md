@@ -4,8 +4,8 @@ Verified: 16 October 2026. Scope: tracked links, tracked QR assets, company anal
 
 ## Delivery
 
-- Production: https://tinytrail.link/manage/ — Worker `tinytrail`, current version `814c59e9-e2e3-4079-8688-20823986d34e` (initial Release 1 activation: `d52a7419-f86a-4974-b492-5a8027b1a4cb`).
-- Isolated staging: `tinytrail-staging.hamedmstfa.workers.dev`, current version `e49a0908-9ce5-4eb8-a3aa-8439e3383d0a`; its D1 binding is separate from production and has no custom-domain routes.
+- Production: https://tinytrail.link/manage/ — Worker `tinytrail`, current version `f04f3f3b-b2e6-4503-8c8d-675c937c24a6` (initial Release 1 activation: `d52a7419-f86a-4974-b492-5a8027b1a4cb`).
+- Isolated staging: `tinytrail-staging.hamedmstfa.workers.dev`, current version `30dda920-5e8b-46f6-a327-289bc5dd6dcf`; its D1 binding is separate from production and has no custom-domain routes.
 - Forward migration `0004_analytics.sql` applied in both environments. Production reports all four migrations applied and no foreign-key violations.
 - Initial production rollout used disabled collection/creation flags, version `f54f02fa-4820-47ae-a72c-62a84a8ba259`. Landing, studio, original redirect, missing QR and anonymous API gates passed before final activation.
 - Final global availability flags are enabled, retention is 90 days, cron is `17 * * * *`. Every company starts opted out; only its owner can enable measurement. The user confirmed the 90-day policy.
@@ -48,3 +48,9 @@ Employee profiles, Wallet, CRM, campaigns and routing extensions are not impleme
 Ordinary accounts now open one assigned company automatically. There is no ordinary company picker; platform-admin switching is restricted to explicit memberships. The backend rejects conflicting workspace headers, a second-company invitation and approval after a different invitation assignment. Competing invitation acceptance assigns only one company. Ambiguous old multi-company accounts fail closed for administrator review; no records are deleted. A read-only production preflight found no existing multi-company accounts affected by this policy. No database migration was needed.
 
 All 28 backend tests passed. Enterprise desktop/mobile browser checks passed with assertions for assigned identity, hidden picker, forged-header rejection, matching TinyTrail accent/radius tokens, existing link/QR/bulk flows and exports. Analytics browser checks passed for tracked output decoding, CSV counts and sign-out privacy. Screenshots confirmed full-width mobile link panels and visible wrapping navigation. Final staging and production browser checks found the shared theme at 200, matching orange/4px tokens, no anonymous picker, private APIs at 401 and legacy JSON absent at 404. Firebase delivery and actual customer sign-in were not independently tested.
+
+## Personal accounts follow-up
+
+Migration 0005 and personal account support are deployed. See `PERSONAL_ACCOUNTS.md` for the ownership contract, free pilot limits, backup and rollback details. The personal workspace is private to the verified user and does not count as an additional company assignment. Company joins do not share or move its records. Existing company access, original URLs and analytics behavior are preserved.
+
+All 31 backend tests passed. Updated enterprise browser checks verify personal creation without approval, private QR saving, and separation after switching to the assigned company; existing analytics and export checks also passed. Final production smoke checks passed for both pages, theme and anonymous API gates. Production lists all five migrations, eight original links and no foreign-key violations. No synthetic accounts or events were inserted into production. Actual Firebase email delivery remains unverified by the simulated browser harness.

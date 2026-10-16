@@ -66,7 +66,7 @@ function mount() {
         <div class="qr-preview-foot"><span>MADE TO CONNECT</span><span>↗</span></div>
       </section>
       <section class="qr-controls" aria-label="QR code settings">
-        <div class="qr-section"><div class="qr-step">01 <span>Choose your link</span></div><label for="qr-mode">QR destination mode</label><select id="qr-mode"><option value="tracked">Tracked QR · stable TinyTrail URL</option><option value="static">Static QR · encodes the exact URL</option></select><p id="qr-tracking-note" class="field-hint"></p><label for="qr-saved">From your link library</label><select id="qr-saved"><option value="">Use a different URL</option></select><label for="qr-url">URL to encode</label><input id="qr-url" type="url" maxlength="4096" placeholder="https://…" spellcheck="false" autocomplete="off"><p class="field-hint">Use a company short link or enter a direct website URL.</p><button id="qr-prepare-tracking" class="button secondary" type="button">Create tracking URL</button><p id="qr-tracked-url" class="field-hint"></p></div>
+        <div class="qr-section"><div class="qr-step">01 <span>Choose your link</span></div><label for="qr-mode">QR destination mode</label><select id="qr-mode"><option value="tracked">Tracked QR · stable TinyTrail URL</option><option value="static">Static QR · encodes the exact URL</option></select><p id="qr-tracking-note" class="field-hint"></p><label for="qr-saved">From your link library</label><select id="qr-saved"><option value="">Use a different URL</option></select><label for="qr-url">URL to encode</label><input id="qr-url" type="url" maxlength="4096" placeholder="https://…" spellcheck="false" autocomplete="off"><p class="field-hint">Use a workspace short link or enter a direct website URL.</p><button id="qr-prepare-tracking" class="button secondary" type="button">Create tracking URL</button><p id="qr-tracked-url" class="field-hint"></p></div>
         <div class="qr-section"><div class="qr-step">02 <span>Make it yours</span></div>
           <div class="qr-colors"><div><label for="qr-foreground">Code color</label><div class="qr-color-input"><input id="qr-foreground" type="color"><output id="qr-color-value"></output></div></div><div><label for="qr-background">Background</label><div class="qr-color-input"><input id="qr-background" type="color"><output id="qr-bg-value"></output></div></div></div>
           <div class="qr-swatches" id="qr-swatches" aria-label="TinyTrail code color presets"></div>
@@ -87,7 +87,7 @@ function mount() {
           ])}</div>
         </div>
         <div class="qr-section qr-export"><div class="qr-step">03 <span>Ready to share</span></div><div class="qr-export-options"><div><label for="qr-format">File format</label><select id="qr-format"><option value="svg">SVG · vector</option><option value="png">PNG · image</option><option value="jpeg">JPG · image</option></select></div><div><label for="qr-size">Export dimensions</label><select id="qr-size"><option value="512">512 × 512</option><option value="1024" selected>1024 × 1024</option><option value="2048">2048 × 2048</option></select></div></div>
-          <p id="qr-quality" class="qr-quality" role="status"></p><p id="qr-error" class="form-error hidden" role="alert"></p><div id="qr-profile" class="hidden"><label for="qr-design-title">Design name</label><input id="qr-design-title" maxlength="100" placeholder="Name this QR design"><button class="button secondary" id="qr-save-profile" type="button">Save to company</button></div><div class="qr-download-row"><button class="text-button" id="qr-reset">Reset style</button><button class="button primary" id="qr-download" disabled>Download SVG <span>↓</span></button></div><p class="qr-private-note">Generated in your browser. Your URL is never sent to a QR service.</p>
+          <p id="qr-quality" class="qr-quality" role="status"></p><p id="qr-error" class="form-error hidden" role="alert"></p><div id="qr-profile" class="hidden"><label for="qr-design-title">Design name</label><input id="qr-design-title" maxlength="100" placeholder="Name this QR design"><button class="button secondary" id="qr-save-profile" type="button">Save to workspace</button></div><div class="qr-download-row"><button class="text-button" id="qr-reset">Reset style</button><button class="button primary" id="qr-download" disabled>Download SVG <span>↓</span></button></div><p class="qr-private-note">Generated in your browser. Your URL is never sent to a QR service.</p>
         </div>
       </section>
     </div>`;
@@ -124,7 +124,7 @@ function mount() {
         url: source,
         id: trackingKey,
         asset: trackedAsset,
-        title: $("qr-design-title").value.trim() || "Company QR",
+        title: $("qr-design-title").value.trim() || "Workspace QR",
       });
       if (!dialog.open || requestedKey !== trackingKey) return;
       trackedAsset = result;
@@ -193,7 +193,7 @@ function mount() {
           : {}),
       });
       $("qr-quality").textContent =
-        "Saved to your company. You can reopen this design on any device.";
+        "Saved to your workspace. You can reopen this design on any device.";
       $("qr-error").classList.add("hidden");
     } catch (error) {
       $("qr-error").textContent =
@@ -234,7 +234,7 @@ function trackingUI() {
     ? "Update tracked destination"
     : "Create tracking URL";
   $("qr-tracking-note").textContent = tracked
-    ? "Create the stable tracking URL before saving or exporting. Visits are recorded only while your company enables measurement. Destination changes apply to every issued copy when you choose Update tracked destination. QR visits measure requests through this URL, not confirmed physical scans."
+    ? "Create the stable tracking URL before saving or exporting. Visits are recorded only while your workspace enables measurement. Destination changes apply to every issued copy when you choose Update tracked destination. QR visits measure requests through this URL, not confirmed physical scans."
     : "Static QR: no QR-specific tracking. A TinyTrail short link inside it may still record link visits. Existing exported QR files remain unchanged.";
   $("qr-tracked-url").textContent =
     trackedAsset && tracked ? trackedAsset.publicUrl : "";
@@ -401,13 +401,13 @@ export async function openQRBuilder({
     !trackingAvailable && !asset;
   trackingUI();
   presetHandler = onPreset;
-  let controls = $("qr-company-presets");
+  let controls = $("qr-workspace-presets");
   if (!controls) {
     controls = document.createElement("div");
-    controls.id = "qr-company-presets";
+    controls.id = "qr-workspace-presets";
     controls.className = "qr-preset-controls";
     controls.innerHTML =
-      '<label for="qr-preset-select">Company style preset</label><select id="qr-preset-select"><option value="">Choose a preset</option></select><label for="qr-preset-name">Save current style as a company preset</label><input id="qr-preset-name" maxlength="100" placeholder="e.g. Company print style"><button id="qr-preset-save" class="button secondary" type="button">Save company preset</button>';
+      '<label for="qr-preset-select">Workspace style preset</label><select id="qr-preset-select"><option value="">Choose a preset</option></select><label for="qr-preset-name">Save current style as a workspace preset</label><input id="qr-preset-name" maxlength="100" placeholder="e.g. Workspace print style"><button id="qr-preset-save" class="button secondary" type="button">Save workspace preset</button>';
     dialog.querySelector(".qr-controls").prepend(controls);
   }
   const presetSelect = $("qr-preset-select");
@@ -442,7 +442,7 @@ export async function openQRBuilder({
         settings: current,
       });
       $("qr-quality").textContent =
-        "Company preset saved. Reopen the designer to select it.";
+        "Workspace preset saved. Reopen the designer to select it.";
     } catch (e) {
       $("qr-error").textContent = e.message;
       $("qr-error").classList.remove("hidden");

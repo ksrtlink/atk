@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFile } from "node:fs/promises";
 import { createApp } from "../src/worker.mjs";
 const migrations = await Promise.all(
-  ["0001_schema.sql", "0002_original_links.sql", "0003_enterprise.sql", "0004_analytics.sql"].map(
+  ["0001_schema.sql", "0002_original_links.sql", "0003_enterprise.sql", "0004_analytics.sql", "0005_personal.sql"].map(
     (n) => readFile(new URL("../migrations/" + n, import.meta.url), "utf8"),
   ),
 );
@@ -149,7 +149,7 @@ test("anonymous, unverified, pending and non-admin users cannot access company o
   for (const user of [null, "bad", "unverified", "alice"]) {
     assert.equal(
       (await f.request("/api/links", { user })).status,
-      user === "alice" ? 403 : user === "unverified" ? 403 : 401,
+      user === "alice" ? 200 : user === "unverified" ? 403 : 401,
     );
     assert.notEqual((await f.request("/api/legacy", { user })).status, 200);
   }
@@ -633,4 +633,51 @@ test("simultaneous invitations to two companies assign only one company", async 
   assert.deepEqual(responses.map(r=>r.status).sort(),[200,409]);
   assert.equal(f.db.sql.prepare("SELECT count(*) AS n FROM memberships WHERE uid='charlie'").get().n,1);
   assert.equal(f.db.sql.prepare("SELECT count(*) AS n FROM invitations WHERE accepted_by='charlie'").get().n,1);
+});
+
+
+test("verified individuals get one private workspace without approval and cannot share it", async () => {
+  const f=fixture(), me=await f.data("/api/me"), personal=me.personalWorkspace.id;
+  assert.equal(me.personalWorkspace.kind,"personal");
+  assert.deepEqual(me.workspaces,[]);
+  assert.equal((await f.data("/api/me")).personalWorkspace.id,personal);
+  assert.equal((await f.request("/api/links")).status,200);
+  assert.equal((await create(f,personal,"private-report")).status,201);
+  assert.equal((await f.request("/api/links",{user:"bob",wid:personal})).status,403);
+  assert.equal((await f.request("/api/links",{user:"admin",wid:personal})).status,403);
+  assert.equal((await f.request("/api/invitations",{wid:personal,method:"POST",body:{email:"bob@example.com"}})).status,403);
+  assert.equal((await f.request("/api/members",{wid:personal,method:"DELETE",body:{uid:"alice"}})).status,403);
+  assert.throws(()=>f.db.sql.prepare("INSERT INTO memberships VALUES(?,'alice','owner')").run(personal));
+  assert.throws(()=>f.db.sql.prepare("UPDATE workspaces SET personal_owner_uid='bob' WHERE id=?").run(personal));
+});
+
+test("joining a company keeps personal records private", async () => {
+  const f=fixture(), personal=(await f.data("/api/me")).personalWorkspace.id;
+  await create(f,personal,"my-private-link");
+  const designId=crypto.randomUUID();
+  assert.equal((await f.request("/api/designs",{wid:personal,method:"POST",body:{id:designId,title:"My QR",url:"https://example.com/private",settings:style}})).status,201);
+  const wid=await f.approve("bob");
+  const invite=await f.data("/api/invitations",{user:"bob",wid,method:"POST",body:{email:"alice@example.com"}});
+  await f.data("/api/invitations/accept",{method:"POST",body:{token:new URL(invite.url).hash.slice(8)}});
+  assert.equal((await f.data("/api/links",{wid})).links.length,0);
+  assert.equal((await f.data("/api/links",{wid:personal})).links.length,1);
+  assert.equal((await f.data("/api/designs",{wid})).designs.length,0);
+  assert.equal((await f.request("/api/designs",{user:"bob",wid,method:"POST",body:{id:designId,version:1,title:"Steal",url:"https://example.com",settings:style}})).status,404);
+  assert.equal((await f.request("/api/transfer",{wid,method:"POST",body:{confirm:true}})).status,200);
+  assert.equal((await f.data("/api/links",{wid:personal})).links.length,1);
+});
+
+test("personal limits bound saved links, QR designs and bulk rows on the server", async () => {
+  const f=fixture(), wid=(await f.data("/api/me")).personalWorkspace.id;
+  assert.deepEqual((await f.data("/api/workspace",{wid})).limits,{links:25,designs:25,bulkRows:10});
+  for(let i=0;i<25;i++) assert.equal((await create(f,wid,"private-"+i)).status,201);
+  assert.equal((await create(f,wid,"over-limit")).status,429);
+  const tooMany=await f.request("/api/bulk",{wid,method:"POST",body:{id:crypto.randomUUID(),mode:"qr",rows:Array.from({length:11},(_,i)=>({title:"QR "+i,url:"https://example.com/"+i})),settings:style}});
+  assert.equal(tooMany.status,400);
+  f.env.TRACKED_QR_ENABLED="true";
+  for(let i=0;i<25;i++) assert.equal((await f.request("/api/tracked-qrs",{wid,method:"POST",body:{id:crypto.randomUUID(),title:"Tracked QR",destination:"https://example.com"}})).status,201);
+  assert.equal((await f.request("/api/tracked-qrs",{wid,method:"POST",body:{id:crypto.randomUUID(),title:"Extra tracked QR",destination:"https://example.com"}})).status,429);
+
+  for(let i=0;i<25;i++) assert.equal((await f.request("/api/designs",{wid,method:"POST",body:{id:crypto.randomUUID(),title:"Private QR",url:"https://example.com",settings:style}})).status,201);
+  assert.equal((await f.request("/api/designs",{wid,method:"POST",body:{id:crypto.randomUUID(),title:"Extra QR",url:"https://example.com",settings:style}})).status,429);
 });

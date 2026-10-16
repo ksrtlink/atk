@@ -13,7 +13,7 @@ for (const n of [
   "0001_schema.sql",
   "0002_original_links.sql",
   "0003_enterprise.sql",
-  "0004_analytics.sql",
+  "0004_analytics.sql", "0005_personal.sql",
 ])
   sql.exec(await readFile(resolve(root, "migrations/" + n), "utf8"));
 let failAnalytics = false;

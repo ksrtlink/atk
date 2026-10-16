@@ -11,7 +11,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
 
-    <title>TinyTrail — Company workspace</title>
+    <title>TinyTrail — Your link &amp; QR workspace</title>
 
     <link rel="icon" href="./tinytrail-icon.svg" type="image/svg+xml" />
 
@@ -39,7 +39,7 @@
           alt="TinyTrail"
           width="170"
           height="36"
-        /><span class="brand-sub">COMPANY WORKSPACE</span></a
+        /><span class="brand-sub">LINK &amp; QR WORKSPACE</span></a
       >
       <div id="assigned-company" class="company-context hidden">
         <span class="company-context-label">Your company</span>
@@ -51,6 +51,12 @@
         <select id="workspace-select" aria-label="Authorized company"></select>
         <span class="company-context-role">Approved memberships only</span>
       </div>
+
+      <div id="library-contexts" class="workspace-context-switch hidden" aria-label="Library context">
+        <button id="personal-open" class="button secondary" type="button">Personal</button>
+        <button id="company-open" class="button secondary" type="button">Company</button>
+      </div>
+      <button id="request-company" class="text-button hidden" type="button">Need a company workspace?</button>
 
       <nav class="enterprise-nav" aria-label="Workspace">
         <button data-view="links" class="active">Link library</button
@@ -78,11 +84,11 @@
       <main id="main">
         <div class="page-heading">
           <div>
-            <div class="eyebrow">ONE COMPANY. EVERY CONNECTION.</div>
+            <div class="eyebrow">EVERY LINK. EVERY CONNECTION.</div>
 
             <h1 id="page-title">Your company’s link studio.</h1>
 
-            <p>
+            <p id="workspace-description">
               Consistent links. Considered QR codes. Ready for the real world.
             </p>
           </div>
@@ -105,10 +111,10 @@
         <section id="access-panel" class="box hidden">
           <div class="eyebrow">PRIVATE COMPANY PILOT</div>
 
-          <h2>A workspace for your company.</h2>
+          <h2>Request a shared company workspace.</h2>
 
           <p>
-            Sign in and verify your email to request access. Already invited?
+            Your verified account includes a private personal workspace. Request company access only if you need a shared library. Already invited?
             Open your invitation link after signing in with the matching email.
           </p>
 
@@ -143,7 +149,7 @@
 
           <p id="transfer-summary"></p>
 
-          <p>
+          <p id="transfer-privacy">
             Transferred items will be visible and editable by all members of
             this company. Their URLs will stay the same.
           </p>
@@ -155,8 +161,7 @@
           <div id="transfer-items" class="hidden"></div>
 
           <label class="check"
-            ><input id="transfer-confirm" type="checkbox" /> I confirm sharing
-            these items with the selected company.</label
+            ><input id="transfer-confirm" type="checkbox" /><span id="transfer-confirm-label"> I confirm sharing these items with my assigned company.</span></label
           ><button id="transfer-submit" class="button secondary">
             Transfer to company
           </button>
@@ -497,7 +502,8 @@
           </section>
 
           <section id="view-team" class="hidden">
-            <div class="box">
+            <div id="personal-account-note" class="box hidden"><h2>Your private workspace</h2><p>Only you can access this library. Joining a company does not share or move your personal links and QR codes.</p></div>
+            <div id="company-members-box" class="box">
               <h2>Company members</h2>
 
               <div id="members"></div>
@@ -527,11 +533,10 @@
             </div>
 
             <div class="box">
-              <h2>Company QR presets</h2>
+              <h2>Saved QR presets</h2>
 
-              <p>
-                Save consistent styles from the bulk studio. Presets are shared
-                with everyone in this company.
+              <p id="presets-note">
+                Save consistent styles from the bulk studio.
               </p>
 
               <div id="presets"></div>
@@ -561,7 +566,7 @@
         <p id="app-error" class="form-error hidden" role="alert"></p>
 
         <footer>
-          <span>TinyTrail · Company link &amp; QR studio</span
+          <span>TinyTrail · Link &amp; QR studio</span
           ><span>Small links. Considered connections.</span>
         </footer>
       </main>

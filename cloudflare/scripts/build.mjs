@@ -34,10 +34,11 @@ let html = await readFile(new URL("ui/index.html", project), "utf8");
 html = html.replace(
   "<!--ACCOUNT_DIALOG-->",
   (await readFile(new URL("ui/account-dialog.html", project), "utf8"))
-    .replace("YOUR PERSONAL WORKSPACE", "YOUR COMPANY ACCOUNT")
+    .replace("YOUR PERSONAL WORKSPACE", "YOUR TINYTRAIL ACCOUNT")
     .replace(
       "One email account for your links and saved QR designs.",
-      "Sign in to your company’s shared link and QR studio.",
+      "Sign in to your private library or assigned company workspace.",
+    ).replace("Use your work email, or another email permitted by this workspace.", "Use an email you can verify. Company access is managed separately.",
     ),
 );
 await writeFile(new URL("index.html", output), html);

@@ -317,3 +317,9 @@ td input {
   }
   .enterprise-nav button { white-space: normal; font-size: 12px; padding: 8px 6px; }
 }
+
+.workspace-context-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.workspace-context-switch button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+@media(max-width:900px) { .workspace-context-switch { grid-column:1/-1; justify-self:end; width:260px; margin:0; } }
+
+@media(max-width:900px) { .sidebar #request-company { grid-column:1/-1; justify-self:end; margin:0; font-size:12px; } }

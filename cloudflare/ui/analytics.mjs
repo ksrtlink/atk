@@ -85,7 +85,7 @@ export function mountAnalytics({ api, act, message, getState }) {
     $("analytics-status").textContent = "";
     $("analytics-collection").textContent = "";
     $("analytics-export").disabled = true;
-    $("analytics-asset").replaceChildren(new Option("All company assets", ""));
+    $("analytics-asset").replaceChildren(new Option("All workspace assets", ""));
     for (const id of [
       "analytics-total",
       "analytics-links",
@@ -112,7 +112,7 @@ export function mountAnalytics({ api, act, message, getState }) {
   function controls() {
     const enabled = settings.collection && settings.workspaceEnabled;
     $("analytics-collection").textContent =
-      `${enabled ? "Measurement enabled" : settings.workspaceEnabled ? "Collection is paused for this deployment" : "Measurement is off for this company"}. ${settings.trackingSince ? "First enabled " + new Date(settings.trackingSince).toLocaleString("en-GB", { timeZone: "UTC" }) + " UTC." : "No visits have been measured yet."} Raw events are retained for ${settings.retentionDays} days.`;
+      `${enabled ? "Measurement enabled" : settings.workspaceEnabled ? "Collection is paused for this deployment" : "Measurement is off for this workspace"}. ${settings.trackingSince ? "First enabled " + new Date(settings.trackingSince).toLocaleString("en-GB", { timeZone: "UTC" }) + " UTC." : "No visits have been measured yet."} Raw events are retained for ${settings.retentionDays} days.`;
     const owner = getState().workspace?.role === "owner";
     $("analytics-toggle").classList.toggle("hidden", !owner);
     $("analytics-toggle").textContent = settings.workspaceEnabled
@@ -259,7 +259,7 @@ export function mountAnalytics({ api, act, message, getState }) {
       $("analytics-breakdowns").append(box);
     }
     $("analytics-health").textContent =
-      `${r.health.storedEvents.toLocaleString()} stored events in this company. ${r.health.latestEventAt ? "Latest recorded event: " + r.health.latestEventAt + "." : "No successful event recorded yet."} ${r.health.pruningPending ? "Expired rows are awaiting the next bounded retention pass." : "No expired rows detected."}`;
+      `${r.health.storedEvents.toLocaleString()} stored events in this workspace. ${r.health.latestEventAt ? "Latest recorded event: " + r.health.latestEventAt + "." : "No successful event recorded yet."} ${r.health.pruningPending ? "Expired rows are awaiting the next bounded retention pass." : "No expired rows detected."}`;
     $("analytics-policy").textContent =
       `Filter policy: ${r.filterVersion}. Best-effort collection can miss events during write failures. Unknown/direct combines missing and invalid referrers; it does not prove a typed URL.`;
     $("analytics-report").classList.remove("hidden");
@@ -278,7 +278,7 @@ export function mountAnalytics({ api, act, message, getState }) {
       controls();
       const old = $("analytics-asset").value;
       $("analytics-asset").replaceChildren(
-        new Option("All company assets", ""),
+        new Option("All workspace assets", ""),
       );
       for (const link of getState().links)
         $("analytics-asset").append(

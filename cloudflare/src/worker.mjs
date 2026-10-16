@@ -207,7 +207,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
         if (!env.DB) fail(503, "Storage is not configured.", "configuration");
         const header = request.headers.get("Authorization") || "";
         if (!header.startsWith("Bearer "))
-          fail(401, "Sign in to your company workspace.", "unauthenticated");
+          fail(401, "Sign in to your workspace.", "unauthenticated");
         let user;
         try {
           user = await authenticate(header.slice(7), env);
@@ -245,6 +245,12 @@ export function createApp(authenticate = verifyFirebaseToken) {
           user.email,
           user.name || "",
         ).run();
+        const personalId = "personal-" + user.uid;
+        await stmt("INSERT OR IGNORE INTO workspaces(id,name,kind,personal_owner_uid) VALUES(?,'Personal workspace','personal',?)", personalId, user.uid).run();
+        const personal = await first("SELECT * FROM workspaces WHERE id=? AND kind='personal' AND personal_owner_uid=?", personalId, user.uid);
+        if (!personal) fail(503, "Your personal workspace could not be opened.");
+        personal.role = "owner";
+        personal.bulkRows = 10;
         if (admin) {
           await db.batch([
             stmt(
@@ -264,6 +270,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
           return json({
             user: { uid: user.uid, email: user.email, name: user.name },
             platformAdmin: admin,
+            personalWorkspace: personal,
             workspaces: admin || memberships.length === 1 ? memberships : [],
             assignedWorkspaceId: !admin && memberships.length === 1 ? memberships[0].id : null,
             canSwitchCompanies: admin && memberships.length > 1,
@@ -438,10 +445,12 @@ export function createApp(authenticate = verifyFirebaseToken) {
           return json({ workspaceId: invite.workspace_id });
         }
         const assigned = !admin && memberships.length === 1 ? memberships[0] : null;
-        const wid = request.headers.get("X-Workspace-Id") || assigned?.id,
-          membership = memberships.find((w) => w.id === wid);
-        if (!membership || (!admin && assigned?.id !== wid))
+        const wid = request.headers.get("X-Workspace-Id") || assigned?.id || personal.id,
+          isPersonal = wid === personal.id,
+          membership = isPersonal ? personal : memberships.find((w) => w.id === wid);
+        if (!membership || (!isPersonal && !admin && assigned?.id !== wid))
           fail(403, "Your account does not have access to this company. Contact your administrator.", "membership");
+        if (isPersonal) env = {...env, MAX_TRACKED_QRS_PER_WORKSPACE: "25"};
         const owner = () => {
           if (membership.role !== "owner")
             fail(403, "Company owner access is required.", "forbidden");
@@ -519,8 +528,9 @@ export function createApp(authenticate = verifyFirebaseToken) {
               request,
             ),
           });
-        const maxLinks = limit(env.MAX_LINKS_PER_WORKSPACE),
-          maxDesigns = limit(env.MAX_DESIGNS_PER_WORKSPACE);
+        const maxLinks = isPersonal ? 25 : limit(env.MAX_LINKS_PER_WORKSPACE),
+          maxDesigns = isPersonal ? 25 : limit(env.MAX_DESIGNS_PER_WORKSPACE),
+          maxBulkRows = isPersonal ? 10 : 100;
         async function saveLink(body, key) {
           const data = linkInput(body, env, request);
           if (!uuid(key)) fail(400, "A valid request ID is required.");
@@ -574,7 +584,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
             }
             throw e;
           }
-          if (!row) fail(429, "Company link allowance reached.", "quota");
+          if (!row) fail(429, "Workspace link allowance reached.", "quota");
           return linkRecord(row);
         }
         async function saveDesign(body) {
@@ -648,7 +658,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
               "conflict",
             );
           }
-          if (!row) fail(429, "Company QR allowance reached.", "quota");
+          if (!row) fail(429, "Workspace QR allowance reached.", "quota");
           return designRecord(row);
         }
         if (path === "/api/workspace" && method === "GET")
@@ -658,9 +668,10 @@ export function createApp(authenticate = verifyFirebaseToken) {
               "SELECT m.uid,m.role,u.email FROM memberships m JOIN users u ON u.uid=m.uid WHERE m.workspace_id=?",
               wid,
             ),
-            limits: { links: maxLinks, designs: maxDesigns },
+            limits: { links: maxLinks, designs: maxDesigns, bulkRows: maxBulkRows },
           });
         if (path === "/api/members" && method === "DELETE") {
+          if (isPersonal) fail(403, "Personal workspaces cannot have team members.");
           owner();
           const b = await bodyJSON(request);
           const result = await stmt(
@@ -677,6 +688,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
           return json({ ok: true });
         }
         if (path === "/api/invitations" && method === "POST") {
+          if (isPersonal) fail(403, "Personal workspaces cannot invite members.");
           owner();
           const b = await bodyJSON(request),
             inviteEmail = email(b.email);
@@ -901,9 +913,9 @@ export function createApp(authenticate = verifyFirebaseToken) {
             !["links", "qr", "both"].includes(b.mode) ||
             !Array.isArray(b.rows) ||
             !b.rows.length ||
-            b.rows.length > 100
+            b.rows.length > maxBulkRows
           )
-            fail(400, "Choose 1–100 rows and a supported workflow.");
+            fail(400, `Choose 1–${maxBulkRows} rows and a supported workflow.`);
           const settings = designInput({
             title: "Batch",
             url: "https://example.com/",
@@ -972,7 +984,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
                 "SELECT COUNT(*) AS n FROM bulk_jobs WHERE workspace_id=?",
                 wid,
               )
-            ).n >= 200
+            ).n >= (isPersonal ? 10 : 200)
           )
             fail(429, "Company batch allowance reached.");
           await db.batch([

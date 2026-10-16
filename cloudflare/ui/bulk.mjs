@@ -90,7 +90,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
     $("bulk-style").append(wrap);
     return input;
   };
-  field("batch-preset", "Company preset", []);
+  field("batch-preset", "Workspace preset", []);
   field("batch-dots", "Dot shape", [
     "square",
     "dots",
@@ -113,7 +113,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
   const note = el(
     "p",
     "field-hint",
-    "Tracked codes use stable TinyTrail URLs. QR visits are recorded only when your company enables measurement. Static codes have no QR-specific tracking.",
+    "Tracked codes use stable TinyTrail URLs. QR visits are recorded only when your workspace enables measurement. Static codes have no QR-specific tracking.",
   );
   $("bulk-style").append(note);
   tracking.onchange = () => {
@@ -129,11 +129,11 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
   });
   const presetName = field(
     "batch-preset-name",
-    "New company preset name",
+    "New workspace preset name",
     "text",
   );
   presetName.maxLength = 100;
-  const presetSave = el("button", "button secondary", "Save company preset");
+  const presetSave = el("button", "button secondary", "Save workspace preset");
   $("bulk-style").append(presetSave);
   presetSave.onclick = act(async () => {
     await api("/api/presets", {
@@ -141,7 +141,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
       body: { name: presetName.value, settings: settings() },
     });
     await onChange();
-    message("Company preset saved.");
+    message("Workspace preset saved.");
   });
   function reset() {
     generation++;
@@ -339,7 +339,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
     const quota =
       (mode !== "qr" && state.links.length + needed > info.limits.links) ||
       (mode !== "links" && state.designs.length + needed > info.limits.designs);
-    if (quota) note += " This batch exceeds the remaining company allowance.";
+    if (quota) note += " This batch exceeds the remaining workspace allowance.";
     if (!safe) note += " Choose darker code colors.";
     $("bulk-create").disabled =
       !rows.length || rows.some((r) => r.error) || quota || !safe;
@@ -379,8 +379,9 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
         ),
       );
     }
-    if (!data.length || data.length > 100)
-      throw Error("Import 1–100 rows per batch.");
+    const maxRows = getState().workspace.kind === "personal" ? 10 : 100;
+    if (!data.length || data.length > maxRows)
+      throw Error(`Import 1–${maxRows} rows per batch.`);
     rows = data;
     createId = null;
     await validate();
@@ -504,7 +505,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
         manifest = [];
       for (const row of snapshot.rows.filter((r) => r.result?.design)) {
         if (ticket !== generation)
-          throw Error("Company changed; export cancelled.");
+          throw Error("Workspace changed; export cancelled.");
         const result = row.result,
           qr = new Q(
             qrOptions({
@@ -552,7 +553,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
             ["manifest.json", bytes(JSON.stringify(manifest, null, 2))],
           ]);
       if (ticket !== generation)
-        throw Error("Company changed; export cancelled.");
+        throw Error("Workspace changed; export cancelled.");
       save(pdf ? "tinytrail-print-sheets.pdf" : "tinytrail-qr-codes.zip", blob);
       message(pdf ? "Vector print sheets exported." : "QR archive exported.");
     } finally {
