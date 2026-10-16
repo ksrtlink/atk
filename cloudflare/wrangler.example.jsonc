@@ -8,14 +8,21 @@
     "directory": "./public",
     "binding": "ASSETS",
     "not_found_handling": "none",
-    "run_worker_first": ["/api/*", "/r/*", "/"]
+    "run_worker_first": [
+      "/api/*",
+      "/r/*",
+      "/q/*",
+      "/"
+    ]
   },
-  "d1_databases": [{
-    "binding": "DB",
-    "database_name": "tinytrail-db",
-    "database_id": "REPLACE_WITH_D1_DATABASE_ID",
-    "migrations_dir": "migrations"
-  }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tinytrail-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
   "vars": {
     "FIREBASE_PROJECT_ID": "",
     "FIREBASE_API_KEY": "",
@@ -23,6 +30,15 @@
     "ADMIN_EMAILS": "your-verified-admin@example.com",
     "ALLOWED_EMAIL_DOMAINS": "",
     "MAX_LINKS_PER_WORKSPACE": "200",
-    "MAX_DESIGNS_PER_WORKSPACE": "200"
+    "MAX_DESIGNS_PER_WORKSPACE": "200",
+    "ANALYTICS_ENABLED": "false",
+    "TRACKED_QR_ENABLED": "false",
+    "ANALYTICS_RETENTION_DAYS": "90",
+    "MAX_TRACKED_QRS_PER_WORKSPACE": "200"
+  },
+  "triggers": {
+    "crons": [
+      "17 * * * *"
+    ]
   }
 }

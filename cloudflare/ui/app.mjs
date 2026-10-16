@@ -11,6 +11,7 @@ import {
   token,
 } from "./auth.mjs";
 const $ = (id) => document.getElementById(id);
+let analyticsView = null;
 export const node = (tag, cls = "", value = "") =>
   Object.assign(document.createElement(tag), {
     className: cls,
@@ -41,7 +42,7 @@ function error(value = "") {
 }
 export async function api(
   path,
-  { method = "GET", body, auth = true, key } = {},
+  { method = "GET", body, auth = true, key, responseType = "json" } = {},
 ) {
   const uid = account()?.uid,
     wid = workspace?.id,
@@ -65,7 +66,10 @@ export async function api(
       "Connection interrupted. Refresh or resume to confirm saved results.",
     );
   }
-  const data = await response.json();
+  const data =
+    response.ok && responseType === "blob"
+      ? await response.blob()
+      : await response.json();
   if (auth && (uid !== account()?.uid || wid !== workspace?.id))
     throw Error("The account or company changed. Reopen this view.");
   if (!response.ok) {
@@ -125,11 +129,14 @@ function clearLibrary() {
   for (const id of [
     "qr-preview",
     "qr-preview-url",
+    "qr-tracked-url",
+    "qr-tracking-note",
     "qr-preset-select",
     "qr-saved",
   ])
     $(id)?.replaceChildren();
   bulk?.reset();
+  analyticsView?.reset();
 }
 function ui() {
   const user = account();
@@ -175,7 +182,7 @@ function ui() {
   $("preview").textContent = editing
     ? editing.shortUrl
     : `${config?.publicOrigin || location.origin}/r/${$("slug").value || "your-name"}`;
-  for (const name of ["links", "designs", "bulk", "team", "admin"])
+  for (const name of ["links", "designs", "bulk", "team", "admin", "analytics"])
     $("view-" + name).classList.toggle(
       "hidden",
       view !== name || (name === "admin" ? !me?.platformAdmin : !workspace),
@@ -249,6 +256,13 @@ function render() {
     const row = node("article", "design-row"),
       body = node("div");
     body.append(node("h3", "", d.title), node("p", "", d.url));
+    body.append(
+      node(
+        "small",
+        "field-hint",
+        d.trackedQrId ? "Tracked QR URL" : "Static QR: no QR-specific tracking",
+      ),
+    );
     const b = node("button", "button secondary", "Open designer");
     b.onclick = act(() => openQR(d.url, d));
     row.append(body, b);
@@ -346,6 +360,9 @@ async function openQR(url = "", design = null) {
   if (!workspace)
     throw Error("Join an approved company before creating QR codes.");
   const { openQRBuilder } = await import("./qr-builder.mjs");
+  const asset = design?.trackedQrId
+    ? (await api("/api/tracked-qrs/" + design.trackedQrId)).asset
+    : null;
   const wid = workspace.id,
     uid = account().uid;
   let saved = {
@@ -356,6 +373,31 @@ async function openQR(url = "", design = null) {
     url,
     links,
     design,
+    asset,
+    trackingAvailable: !!config.features?.trackedQR,
+    onPrepare: async (value) => {
+      if (wid !== workspace?.id || uid !== account()?.uid)
+        throw Error("The company changed. Reopen the designer.");
+      const link = links.find((l) => l.shortUrl === value.url);
+      const body = {
+        ...(link ? { linkSlug: link.slug } : { destination: value.url }),
+        title: value.title,
+      };
+      return (
+        await api(
+          "/api/tracked-qrs" + (value.asset ? "/" + value.asset.id : ""),
+          {
+            method: value.asset ? "PATCH" : "POST",
+            body: {
+              ...body,
+              ...(value.asset
+                ? { version: value.asset.version, state: "active" }
+                : { id: value.id }),
+            },
+          },
+        )
+      ).asset;
+    },
     onSave: async (value) => {
       if (wid !== workspace?.id || uid !== account()?.uid)
         throw Error("The company changed. Reopen the designer.");
@@ -436,6 +478,18 @@ async function setView(next) {
   view = next;
   ui();
   if (next === "admin") await adminView();
+  if (next === "analytics" && workspace) {
+    if (!analyticsView) {
+      const { mountAnalytics } = await import("./analytics.mjs");
+      analyticsView = mountAnalytics({
+        api,
+        act,
+        message,
+        getState: () => ({ workspace, links, designs }),
+      });
+    }
+    await analyticsView.refresh();
+  }
   if (next === "bulk" && workspace) {
     if (!bulk) {
       const { mountBulk } = await import("./bulk.mjs");
@@ -443,7 +497,13 @@ async function setView(next) {
         api,
         act,
         message,
-        getState: () => ({ workspace, links, designs, presets }),
+        getState: () => ({
+          workspace,
+          links,
+          designs,
+          presets,
+          features: config.features,
+        }),
         onChange: refreshLibrary,
       });
     }
@@ -635,7 +695,7 @@ export const csvCell = (value) =>
   '"' +
   String(value ?? "")
     .replace(/"/g, '""')
-    .replace(/^[=+@\-\t\r]/, "'$&") +
+    .replace(/^(?=[\s\u0000-\u001f]*[=+@-])/u, "'") +
   '"';
 $("export").onclick = () =>
   download(

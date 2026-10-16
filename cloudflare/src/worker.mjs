@@ -1,3 +1,17 @@
+import {
+  collect,
+  flags,
+  analyticsReport,
+  reportCSV,
+  collectionSettings,
+  changeSettings,
+  createTracked,
+  updateTracked,
+  qrRecord,
+  checkDesignTracking,
+  prune,
+  operationalFailure,
+} from "./analytics.mjs";
 import { verifyFirebaseToken } from "./auth.mjs";
 import {
   Problem,
@@ -86,7 +100,7 @@ async function bodyJSON(request) {
 }
 export function createApp(authenticate = verifyFirebaseToken) {
   return {
-    async fetch(request, env) {
+    async fetch(request, env, ctx) {
       try {
         const url = new URL(request.url),
           path = url.pathname,
@@ -97,27 +111,79 @@ export function createApp(authenticate = verifyFirebaseToken) {
               status: 405,
               headers: { ...security, Allow: "GET, HEAD" },
             });
+          const qrRoute = path.match(/^\/q\/([0-9a-f-]{36})\/?$/);
+          if (qrRoute) {
+            if (!env.DB) fail(503, "Storage unavailable.");
+            const row = await env.DB.prepare(
+              "SELECT q.*,l.destination AS link_destination FROM tracked_qrs q LEFT JOIN links l ON l.slug=q.link_slug AND l.workspace_id=q.workspace_id WHERE q.id=?",
+            )
+              .bind(qrRoute[1])
+              .first();
+            if (!row)
+              return new Response("This QR code was not found.", {
+                status: 404,
+                headers: security,
+              });
+            if (row.state !== "active")
+              return new Response("This QR code is currently disabled.", {
+                status: 410,
+                headers: { ...security, "Cache-Control": "no-store" },
+              });
+            const destination = row.link_slug
+              ? row.link_destination
+              : row.destination;
+            if (!destination)
+              return new Response("This destination is unavailable.", {
+                status: 503,
+                headers: security,
+              });
+            const checked = linkInput(
+              { slug: "qr-target", destination },
+              env,
+              request,
+            );
+            const response = new Response(null, {
+              status: 302,
+              headers: {
+                ...security,
+                Location: checked.destination,
+                "Cache-Control": "no-store",
+              },
+            });
+            collect(request, env, ctx, {
+              workspace_id: row.workspace_id,
+              type: "qr",
+              id: row.id,
+            });
+            return response;
+          }
           const redirect = path.match(/^\/r\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/);
           if (redirect) {
             if (!env.DB) fail(503, "Storage unavailable.");
             const row = await env.DB.prepare(
-              "SELECT destination FROM links WHERE slug=?",
+              "SELECT destination,workspace_id,slug FROM links WHERE slug=?",
             )
               .bind(redirect[1])
               .first();
-            return row
-              ? new Response(null, {
-                  status: 302,
-                  headers: {
-                    ...security,
-                    Location: row.destination,
-                    "Cache-Control": "no-store",
-                  },
-                })
-              : new Response("This short link was not found.", {
-                  status: 404,
-                  headers: security,
-                });
+            if (!row)
+              return new Response("This short link was not found.", {
+                status: 404,
+                headers: security,
+              });
+            const response = new Response(null, {
+              status: 302,
+              headers: {
+                ...security,
+                Location: row.destination,
+                "Cache-Control": "no-store",
+              },
+            });
+            collect(request, env, ctx, {
+              workspace_id: row.workspace_id,
+              type: "link",
+              id: row.slug,
+            });
+            return response;
           }
           return env.ASSETS
             ? env.ASSETS.fetch(request)
@@ -136,6 +202,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
               apiKey: env.FIREBASE_API_KEY || "",
             },
             publicOrigin: publicOrigin(env, request),
+            features: { analytics: true, trackedQR: flags(env).creation },
           });
         if (!env.DB) fail(503, "Storage is not configured.", "configuration");
         const header = request.headers.get("Authorization") || "";
@@ -351,6 +418,79 @@ export function createApp(authenticate = verifyFirebaseToken) {
           if (membership.role !== "owner")
             fail(403, "Company owner access is required.", "forbidden");
         };
+        if (path === "/api/analytics/settings" && method === "GET")
+          return json(await collectionSettings(env, wid));
+        if (path === "/api/analytics/settings" && method === "POST")
+          return json(
+            await changeSettings(
+              env,
+              wid,
+              membership.role,
+              (await bodyJSON(request)).enabled,
+            ),
+          );
+        if (path === "/api/analytics" && method === "GET") {
+          let report;
+          try {
+            report = await analyticsReport(env, wid, url.searchParams);
+          } catch (error) {
+            if (!(error instanceof Problem)) operationalFailure("report_query");
+            throw error;
+          }
+          if (url.searchParams.get("format") === "csv")
+            return new Response(reportCSV(report), {
+              headers: {
+                ...security,
+                "Cache-Control": "private, no-store",
+                "Content-Type": "text/csv;charset=utf-8",
+                "Content-Disposition":
+                  'attachment; filename="tinytrail-analytics.csv"',
+              },
+            });
+          return json(report);
+        }
+        if (path === "/api/tracked-qrs" && method === "GET") {
+          const rows = await all(
+            "SELECT q.*,l.short_url AS link_short_url,l.destination AS link_destination FROM tracked_qrs q LEFT JOIN links l ON l.slug=q.link_slug AND l.workspace_id=q.workspace_id WHERE q.workspace_id=? ORDER BY q.created_at DESC LIMIT 1000",
+            wid,
+          );
+          return json({
+            assets: await Promise.all(rows.map((row) => qrRecord(env, row))),
+          });
+        }
+        if (path === "/api/tracked-qrs" && method === "POST")
+          return json(
+            {
+              asset: await createTracked(
+                env,
+                wid,
+                user,
+                await bodyJSON(request),
+                request,
+              ),
+            },
+            201,
+          );
+        const qm = path.match(/^\/api\/tracked-qrs\/([0-9a-f-]{36})$/);
+        if (qm && method === "GET") {
+          const row = await first(
+            "SELECT * FROM tracked_qrs WHERE id=? AND workspace_id=?",
+            qm[1],
+            wid,
+          );
+          if (!row) fail(404, "Tracked QR not found.", "not_found");
+          return json({ asset: await qrRecord(env, row) });
+        }
+        if (qm && method === "PATCH")
+          return json({
+            asset: await updateTracked(
+              env,
+              wid,
+              await bodyJSON(request),
+              qm[1],
+              request,
+            ),
+          });
         const maxLinks = limit(env.MAX_LINKS_PER_WORKSPACE),
           maxDesigns = limit(env.MAX_DESIGNS_PER_WORKSPACE);
         async function saveLink(body, key) {
@@ -411,6 +551,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
         }
         async function saveDesign(body) {
           const data = designInput(body);
+          const trackedQrId = await checkDesignTracking(env, wid, body);
           if (!uuid(body.id)) fail(400, "A valid design ID is required.");
           const prior = await first(
             "SELECT * FROM qr_designs WHERE id=?",
@@ -423,17 +564,19 @@ export function createApp(authenticate = verifyFirebaseToken) {
               if (
                 prior.title === data.title &&
                 prior.url === data.url &&
-                prior.settings_json === JSON.stringify(data.settings)
+                prior.settings_json === JSON.stringify(data.settings) &&
+                (prior.tracked_qr_id || null) === trackedQrId
               )
                 return designRecord(prior);
               fail(409, "Reopen the saved design before editing.", "conflict");
             }
             const row = await first(
-              "UPDATE qr_designs SET title=?,url=?,settings_json=?,version=version+1,updated_by=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND workspace_id=? AND version=? RETURNING *",
+              "UPDATE qr_designs SET title=?,url=?,settings_json=?,version=version+1,updated_by=?,tracked_qr_id=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND workspace_id=? AND version=? RETURNING *",
               data.title,
               data.url,
               JSON.stringify(data.settings),
               user.uid,
+              trackedQrId,
               body.id,
               wid,
               body.version,
@@ -442,22 +585,40 @@ export function createApp(authenticate = verifyFirebaseToken) {
             return designRecord(row);
           }
           let row;
-          try { row = await first(
-            "INSERT INTO qr_designs(id,owner_uid,title,url,settings_json,workspace_id,updated_by) SELECT ?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM qr_designs WHERE workspace_id=?)<? RETURNING *",
-            body.id,
-            user.uid,
-            data.title,
-            data.url,
-            JSON.stringify(data.settings),
-            wid,
-            user.uid,
-            wid,
-            maxDesigns,
-          ); } catch (error) {
+          try {
+            row = await first(
+              "INSERT INTO qr_designs(id,owner_uid,title,url,settings_json,workspace_id,updated_by,tracked_qr_id) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM qr_designs WHERE workspace_id=?)<? RETURNING *",
+              body.id,
+              user.uid,
+              data.title,
+              data.url,
+              JSON.stringify(data.settings),
+              wid,
+              user.uid,
+              trackedQrId,
+              wid,
+              maxDesigns,
+            );
+          } catch (error) {
             if (!String(error).includes("UNIQUE")) throw error;
-            const replay = await first("SELECT * FROM qr_designs WHERE id=? AND workspace_id=?", body.id, wid);
-            if (replay && replay.title === data.title && replay.url === data.url && replay.settings_json === JSON.stringify(data.settings)) return designRecord(replay);
-            fail(409, "This design was saved by another request. Reopen it.", "conflict");
+            const replay = await first(
+              "SELECT * FROM qr_designs WHERE id=? AND workspace_id=?",
+              body.id,
+              wid,
+            );
+            if (
+              replay &&
+              replay.title === data.title &&
+              replay.url === data.url &&
+              replay.settings_json === JSON.stringify(data.settings) &&
+              (replay.tracked_qr_id || null) === trackedQrId
+            )
+              return designRecord(replay);
+            fail(
+              409,
+              "This design was saved by another request. Reopen it.",
+              "conflict",
+            );
           }
           if (!row) fail(429, "Company QR allowance reached.", "quota");
           return designRecord(row);
@@ -727,6 +888,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
               slug: r.slug || "",
               key: crypto.randomUUID(),
               designId: crypto.randomUUID(),
+              trackingId: crypto.randomUUID(),
             };
             if (b.mode !== "qr")
               linkInput(
@@ -737,11 +899,37 @@ export function createApp(authenticate = verifyFirebaseToken) {
             if (b.mode !== "links")
               designInput({
                 title: input.title,
-                url: b.mode === "qr" ? input.url : "https://example.com/",
+                url:
+                  b.mode === "qr" && b.tracked !== true
+                    ? input.url
+                    : "https://example.com/",
                 settings,
               });
+            if (b.mode === "qr" && b.tracked === true)
+              linkInput(
+                { slug: "qr-target", destination: input.url },
+                env,
+                request,
+              );
+            if (
+              r.trackedQrId !== undefined ||
+              r.assetId !== undefined ||
+              r.linkSlug !== undefined
+            )
+              fail(
+                400,
+                "Bulk rows accept destination URLs, not existing asset IDs.",
+              );
             return input;
           });
+          if (b.tracked !== undefined && typeof b.tracked !== "boolean")
+            fail(400, "Choose tracked or static QR mode.");
+          if (b.tracked === true && !flags(env).creation)
+            fail(
+              409,
+              "New tracked QR codes are disabled for this deployment.",
+              "feature_disabled",
+            );
           const existing = await first(
             "SELECT * FROM bulk_jobs WHERE id=?",
             b.id,
@@ -761,12 +949,13 @@ export function createApp(authenticate = verifyFirebaseToken) {
             fail(429, "Company batch allowance reached.");
           await db.batch([
             stmt(
-              "INSERT INTO bulk_jobs(id,workspace_id,created_by,mode,settings_json) VALUES(?,?,?,?,?)",
+              "INSERT INTO bulk_jobs(id,workspace_id,created_by,mode,settings_json,tracked) VALUES(?,?,?,?,?,?)",
               b.id,
               wid,
               user.uid,
               b.mode,
               JSON.stringify(settings),
+              b.tracked === true ? 1 : 0,
             ),
             stmt(
               "INSERT INTO bulk_rows(job_id,row_index,input_json) SELECT ?,CAST(key AS INTEGER),value FROM json_each(?)",
@@ -805,12 +994,28 @@ export function createApp(authenticate = verifyFirebaseToken) {
                     { slug: input.slug, destination: input.url },
                     input.key,
                   );
+                let tracking = null;
+                if (job.mode !== "links" && job.tracked)
+                  tracking = await createTracked(
+                    env,
+                    wid,
+                    user,
+                    {
+                      id: input.trackingId,
+                      title: input.title,
+                      ...(link
+                        ? { linkSlug: link.slug }
+                        : { destination: input.url }),
+                    },
+                    request,
+                  );
                 if (job.mode !== "links")
                   design = await saveDesign({
                     id: input.designId,
                     title: input.title,
-                    url: link?.shortUrl || input.url,
+                    url: tracking?.publicUrl || link?.shortUrl || input.url,
                     settings: JSON.parse(job.settings_json),
+                    ...(tracking ? { trackedQrId: tracking.id } : {}),
                   });
                 await stmt(
                   "UPDATE bulk_rows SET result_json=?,error=NULL WHERE job_id=? AND row_index=?",
@@ -839,6 +1044,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
             job: {
               id: job.id,
               mode: job.mode,
+              tracked: !!job.tracked,
               settings: JSON.parse(job.settings_json),
             },
             rows: (
@@ -873,6 +1079,19 @@ export function createApp(authenticate = verifyFirebaseToken) {
         );
       }
     },
+    async scheduled(controller, env, ctx) {
+      const task = prune(env).catch(() => operationalFailure("retention_prune"));
+      if (ctx?.waitUntil) ctx.waitUntil(task);
+      else await task;
+    },
   };
 }
-export default createApp();
+const app = createApp();
+export default {
+  fetch(request, env, ctx) {
+    return app.fetch(request, env, ctx);
+  },
+  scheduled(controller, env, ctx) {
+    return app.scheduled(controller, env, ctx);
+  },
+};

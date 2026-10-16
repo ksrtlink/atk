@@ -13,9 +13,13 @@ for (const n of [
   "0001_schema.sql",
   "0002_original_links.sql",
   "0003_enterprise.sql",
+  "0004_analytics.sql",
 ])
   sql.exec(await readFile(resolve(root, "migrations/" + n), "utf8"));
+let failAnalytics = false;
 function prepare(query, args = []) {
+  if (failAnalytics && query.includes("FROM engagement_events"))
+    throw Error("Injected report storage failure");
   return {
     query,
     args,
@@ -45,9 +49,11 @@ const DB = {
             ? { results: sql.prepare(s.query).all(...s.args) }
             : { meta: sql.prepare(s.query).run(...s.args) },
         );
+      failAnalytics = false;
       sql.exec("COMMIT");
       return results;
     } catch (e) {
+      failAnalytics = false;
       sql.exec("ROLLBACK");
       throw e;
     }
@@ -93,6 +99,9 @@ const env = {
   FIREBASE_API_KEY: "public-test-key",
   PUBLIC_ORIGIN: "http://127.0.0.1:4174",
   ADMIN_EMAILS: "admin@example.com",
+  ANALYTICS_ENABLED: "true",
+  TRACKED_QR_ENABLED: "true",
+  ANALYTICS_RETENTION_DAYS: "90",
   ASSETS: {
     async fetch(request) {
       let name = decodeURIComponent(new URL(request.url).pathname);
@@ -126,9 +135,22 @@ const app = createApp((value, settings) =>
 );
 createServer(async (req, res) => {
   try {
+    if (req.url?.startsWith("/qa/analytics-failure")) {
+      failAnalytics =
+        new URL(req.url, "http://localhost").searchParams.get("enabled") ===
+        "1";
+      res.writeHead(200);
+      res.end("Test-only report failure toggled");
+      return;
+    }
     if (req.url === "/qa/reset" && req.method === "POST") {
-      sql.exec("DELETE FROM bulk_rows; DELETE FROM bulk_jobs; DELETE FROM presets; DELETE FROM invitations; DELETE FROM access_requests; DELETE FROM memberships; DELETE FROM qr_designs; DELETE FROM links WHERE legacy=0; DELETE FROM workspaces; DELETE FROM users;");
-      res.writeHead(200); res.end("Reset loopback test database"); return;
+      failAnalytics = false;
+      sql.exec(
+        "DELETE FROM engagement_events; DELETE FROM analytics_periods; DELETE FROM analytics_settings; DELETE FROM bulk_rows; DELETE FROM bulk_jobs; DELETE FROM presets; DELETE FROM invitations; DELETE FROM access_requests; DELETE FROM memberships; DELETE FROM qr_designs; DELETE FROM tracked_qrs; DELETE FROM links WHERE legacy=0; DELETE FROM workspaces; DELETE FROM users;",
+      );
+      res.writeHead(200);
+      res.end("Reset loopback test database");
+      return;
     }
     if (req.url === "/qa/tokens") {
       res.writeHead(200, {
@@ -140,6 +162,7 @@ createServer(async (req, res) => {
     }
     const chunks = [];
     for await (const c of req) chunks.push(c);
+    const background = [];
     const response = await app.fetch(
       new Request("http://127.0.0.1:4174" + req.url, {
         method: req.method,
@@ -149,7 +172,9 @@ createServer(async (req, res) => {
           : Buffer.concat(chunks),
       }),
       env,
+      { waitUntil: (task) => background.push(task) },
     );
+    await Promise.all(background);
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(Buffer.from(await response.arrayBuffer()));
   } catch (e) {

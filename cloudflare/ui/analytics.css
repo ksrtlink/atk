@@ -1,0 +1,90 @@
+.analytics-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.analytics-metrics .box {
+  display: grid;
+  gap: 14px;
+}
+.analytics-metrics span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.analytics-metrics strong {
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -1px;
+}
+.analytics-breakdowns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.analytics-breakdowns h3,
+#analytics-report h3 {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 16px;
+}
+#analytics-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+#analytics-chart .analytics-bar {
+  fill: #ff5e1f;
+}
+#analytics-chart text {
+  fill: #62626a;
+  font-family: inherit;
+  font-size: 11px;
+}
+#analytics-comparison {
+  font-size: 13px;
+}
+#analytics-status {
+  font-size: 13px;
+  line-height: 1.7;
+}
+#analytics-error {
+  padding: 12px;
+}
+#analytics-report details {
+  font-size: 12px;
+  margin-top: 20px;
+}
+#analytics-report summary {
+  cursor: pointer;
+}
+#analytics-report td {
+  font-size: 12px;
+}
+.qr-section #qr-prepare-tracking {
+  margin-top: 12px;
+}
+.qr-section #qr-tracked-url {
+  overflow-wrap: anywhere;
+}
+#analytics-health,
+#analytics-policy {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .analytics-metrics,
+  .analytics-breakdowns {
+    grid-template-columns: 1fr;
+  }
+  .analytics-metrics .box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0;
+  }
+  .analytics-metrics {
+    margin-bottom: 20px;
+  }
+  .analytics-metrics strong {
+    font-size: 24px;
+  }
+}

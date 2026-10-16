@@ -4,4 +4,9 @@ if(config.includes('REPLACE_WITH_D1_DATABASE_ID'))throw new Error('Set the real 
 for(const key of ['FIREBASE_PROJECT_ID','FIREBASE_API_KEY','ADMIN_EMAILS']){
   const match=config.match(new RegExp(`"${key}"\\s*:\\s*"([^\"]+)"`));if(!match?.[1])throw new Error(`Set ${key} in wrangler.jsonc before deploying.`);
 }
+
+
+
+for(const match of config.matchAll(/"(ANALYTICS_ENABLED|TRACKED_QR_ENABLED)"\s*:\s*"([^"]*)"/g)){if(!['true','false'].includes(match[2]))throw Error('Set '+match[1]+' to true or false.');}
+const retention=config.match(/"ANALYTICS_RETENTION_DAYS"\s*:\s*"([^"]*)"/)?.[1];if(retention&&!['30','90'].includes(retention))throw Error('Choose 30 or 90 retention days.');
 console.log('Required deployment settings are present.');

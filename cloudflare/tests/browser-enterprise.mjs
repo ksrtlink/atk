@@ -1,7 +1,7 @@
 import { writeFile, mkdir, readFile, readdir } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { unzipSync, strFromU8 } from "fflate";
-await fetch("http://127.0.0.1:4174/qa/reset", {method:"POST"});
+await fetch("http://127.0.0.1:4174/qa/reset", { method: "POST" });
 const tabs = await (await fetch("http://127.0.0.1:9226/json/list")).json(),
   target = tabs.find((t) => t.type === "page" && !t.url.startsWith("edge:"));
 const ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -201,6 +201,9 @@ try {
   );
   await click("open-qr");
   await wait("document.getElementById('qr-dialog')?.open");
+  await ev(
+    "document.getElementById('qr-mode').value='static';document.getElementById('qr-mode').dispatchEvent(new Event('change'))",
+  );
   await fill("qr-url", "https://example.com/direct");
   await wait("!document.getElementById('qr-download').disabled");
   await fill("qr-design-title", "Direct company QR");
@@ -272,11 +275,16 @@ try {
     "Export files verified at " + decodeURIComponent(downloadDir.pathname),
   );
 
-  await fill("bulk-mode","qr");
-  await fill("bulk-input","https://example.com/report?regions=emea,apac");
+  await fill("bulk-mode", "qr");
+  await fill("bulk-input", "https://example.com/report?regions=emea,apac");
   await click("bulk-preview");
   await wait("!document.getElementById('bulk-create').disabled");
-  assert.equal(await ev("document.querySelector('#bulk-preview-table input[aria-label=url]').value"),"https://example.com/report?regions=emea,apac");
+  assert.equal(
+    await ev(
+      "document.querySelector('#bulk-preview-table input[aria-label=url]').value",
+    ),
+    "https://example.com/report?regions=emea,apac",
+  );
   await ev("document.querySelector('[data-view=links]').click()");
   await shot("enterprise-desktop", 1440, 1000);
   await shot("enterprise-mobile", 390, 844);

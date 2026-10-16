@@ -10,7 +10,7 @@ const cell = (value) =>
   '"' +
   String(value ?? "")
     .replace(/"/g, '""')
-    .replace(/^[=+@\-\t\r]/, "'$&") +
+    .replace(/^(?=[\s\u0000-\u001f]*[=+@-])/u, "'") +
   '"';
 function save(name, blob) {
   const url = URL.createObjectURL(blob),
@@ -103,6 +103,22 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
   field("batch-center", "Corner center", ["square", "dot"]);
   field("batch-color", "Code color", "color").value = "#202b38";
   field("batch-background", "Background", "color").value = "#ffffff";
+  const tracking = field("batch-tracking", "QR destination mode", [
+    "tracked",
+    "static",
+  ]);
+  tracking.value = getState().features?.trackedQR ? "tracked" : "static";
+  tracking.querySelector('option[value="tracked"]').disabled =
+    !getState().features?.trackedQR;
+  const note = el(
+    "p",
+    "field-hint",
+    "Tracked codes use stable TinyTrail URLs. QR visits are recorded only when your company enables measurement. Static codes have no QR-specific tracking.",
+  );
+  $("bulk-style").append(note);
+  tracking.onchange = () => {
+    createId = null;
+  };
   const settings = () => ({
     dots: $("batch-dots").value,
     border: $("batch-border").value,
@@ -134,6 +150,8 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
     running = false;
     createId = null;
     $("bulk-input").value = "";
+    $("batch-preset").replaceChildren(new Option("Custom style", ""));
+    $("batch-preset-name").value = "";
     $("bulk-file").value = "";
     $("bulk-preview-table").replaceChildren();
     $("bulk-results").replaceChildren();
@@ -439,6 +457,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
         mode: $("bulk-mode").value,
         rows,
         settings: settings(),
+        tracked: $("batch-tracking").value === "tracked",
       },
     });
     await open(r.id);

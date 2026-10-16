@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFile } from "node:fs/promises";
 import { createApp } from "../src/worker.mjs";
 const migrations = await Promise.all(
-  ["0001_schema.sql", "0002_original_links.sql", "0003_enterprise.sql"].map(
+  ["0001_schema.sql", "0002_original_links.sql", "0003_enterprise.sql", "0004_analytics.sql"].map(
     (n) => readFile(new URL("../migrations/" + n, import.meta.url), "utf8"),
   ),
 );

@@ -1,22 +1,35 @@
 <!doctype html>
+
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
+
     <title>TinyTrail — Company workspace</title>
+
     <link rel="icon" href="./tinytrail-icon.svg" type="image/svg+xml" />
+
     <link rel="stylesheet" href="./styles.css" />
+
     <link rel="stylesheet" href="./qr-builder.css" />
+
     <link rel="stylesheet" href="./accounts.css" />
+
     <link rel="stylesheet" href="./tinytrail.css?v=enterprise-1" />
+
     <link rel="stylesheet" href="./enterprise.css" />
+    <link rel="stylesheet" href="./analytics.css" />
   </head>
+
   <body>
     <a class="skip" href="#main">Skip to content</a>
+
     <aside class="sidebar">
       <a class="brand" href="/"
         ><img
@@ -30,39 +43,49 @@
       ><select id="workspace-select" aria-label="Active company">
         <option>No company selected</option>
       </select>
+
       <nav class="enterprise-nav" aria-label="Workspace">
         <button data-view="links" class="active">Link library</button
         ><button data-view="designs">QR library</button
         ><button data-view="bulk">Bulk studio</button
+        ><button data-view="analytics">Analytics</button
         ><button data-view="team">Company &amp; team</button
         ><button data-view="admin" id="admin-nav" class="hidden">
           Platform admin
         </button>
       </nav>
+
       <div class="sidebar-bottom">
         <button id="connect" class="text-button">Sign in with email</button
         ><a class="sidebar-note" href="/">Back to TinyTrail ↗</a>
       </div>
     </aside>
+
     <div class="main-wrap">
       <header class="topbar">
         <span id="workspace-label">Company workspace</span
         ><button class="text-button" id="account-top">Sign in</button>
       </header>
+
       <main id="main">
         <div class="page-heading">
           <div>
             <div class="eyebrow">ONE COMPANY. EVERY CONNECTION.</div>
+
             <h1 id="page-title">Your company’s link studio.</h1>
+
             <p>
               Consistent links. Considered QR codes. Ready for the real world.
             </p>
           </div>
+
           <button id="open-qr" class="button secondary">Create QR code</button>
         </div>
+
         <p id="notice" class="profile-notice" role="status">
           Opening your workspace…
         </p>
+
         <button
           id="access-refresh"
           class="button secondary hidden"
@@ -70,13 +93,17 @@
         >
           Refresh company access
         </button>
+
         <section id="access-panel" class="box hidden">
           <div class="eyebrow">PRIVATE COMPANY PILOT</div>
+
           <h2>A workspace for your company.</h2>
+
           <p>
             Sign in and verify your email to request access. Already invited?
             Open your invitation link after signing in with the matching email.
           </p>
+
           <form id="access-form">
             <label for="company-name">Company name</label
             ><input id="company-name" maxlength="100" required /><label
@@ -99,19 +126,26 @@
               Request access
             </button>
           </form>
+
           <p id="access-status" role="status"></p>
         </section>
+
         <section id="transfer-panel" class="box hidden">
           <h2>Bring your previous work with you.</h2>
+
           <p id="transfer-summary"></p>
+
           <p>
             Transferred items will be visible and editable by all members of
             this company. Their URLs will stay the same.
           </p>
+
           <button id="transfer-preview" class="button secondary">
             Preview previous library
           </button>
+
           <div id="transfer-items" class="hidden"></div>
+
           <label class="check"
             ><input id="transfer-confirm" type="checkbox" /> I confirm sharing
             these items with the selected company.</label
@@ -119,14 +153,127 @@
             Transfer to company
           </button>
         </section>
+
         <div id="member-content" class="hidden">
+          <section
+            id="view-analytics"
+            class="hidden"
+            aria-labelledby="analytics-heading"
+          >
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">MEASURED CONNECTIONS</div>
+                <h2 id="analytics-heading">Engagement analytics</h2>
+              </div>
+              <button id="analytics-refresh" class="button secondary">
+                Refresh report
+              </button>
+            </div>
+
+            <div class="box">
+              <p id="analytics-collection"></p>
+              <p>
+                Visits are eligible requests through TinyTrail URLs, not unique
+                people or confirmed physical QR scans. Reports use UTC.
+                Collection is best effort.
+              </p>
+              <button id="analytics-toggle" class="button secondary hidden">
+                Enable measurement
+              </button>
+            </div>
+
+            <form id="analytics-form" class="box">
+              <div class="form-grid">
+                <div>
+                  <label for="analytics-from">From date · UTC inclusive</label
+                  ><input id="analytics-from" type="date" required />
+                </div>
+                <div>
+                  <label for="analytics-to">Through date · UTC inclusive</label
+                  ><input id="analytics-to" type="date" required />
+                </div>
+                <div>
+                  <label for="analytics-channel">Visit channel</label
+                  ><select id="analytics-channel">
+                    <option value="all">Links + QR</option>
+                    <option value="link">Short links</option>
+                    <option value="qr">Tracked QR URLs</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="analytics-asset">Asset</label
+                  ><select id="analytics-asset">
+                    <option value="">All company assets</option>
+                  </select>
+                </div>
+              </div>
+              <div class="action-row">
+                <button class="button primary" type="submit">
+                  Apply filters</button
+                ><button
+                  id="analytics-export"
+                  class="button secondary"
+                  type="button"
+                  disabled
+                >
+                  Export displayed report
+                </button>
+              </div>
+            </form>
+
+            <p id="analytics-status" role="status"></p>
+            <p id="analytics-error" class="form-error hidden" role="alert"></p>
+
+            <div id="analytics-report" class="hidden">
+              <div class="analytics-metrics">
+                <div class="box">
+                  <span>Combined visits</span
+                  ><strong id="analytics-total"></strong>
+                </div>
+                <div class="box">
+                  <span>Link visits</span><strong id="analytics-links"></strong>
+                </div>
+                <div class="box">
+                  <span>QR URL visits</span><strong id="analytics-qr"></strong>
+                </div>
+              </div>
+              <p id="analytics-comparison"></p>
+              <p id="analytics-coverage" class="field-hint"></p>
+              <div class="box">
+                <h3>Daily visits · UTC</h3>
+                <div id="analytics-chart"></div>
+                <details>
+                  <summary>View daily data</summary>
+                  <div id="analytics-days" class="table-scroll"></div>
+                </details>
+              </div>
+              <div class="box">
+                <h3>Asset performance</h3>
+                <div id="analytics-assets" class="table-scroll"></div>
+                <p id="analytics-static-note" class="field-hint"></p>
+              </div>
+              <div id="analytics-breakdowns" class="analytics-breakdowns"></div>
+              <div class="box">
+                <h3>Collection health</h3>
+                <p id="analytics-health"></p>
+                <p>
+                  No IP addresses, visitor cookies, full user-agent strings, or
+                  full referrer URLs are stored. Bot filtering and device
+                  classification are approximate.
+                </p>
+                <p id="analytics-policy"></p>
+              </div>
+            </div>
+          </section>
           <section id="view-links">
             <div class="workspace-grid">
               <div>
                 <div class="section-heading">
                   <h2>Company links <span id="list-count"></span></h2>
+
                   <button id="refresh" class="text-button">Refresh</button>
                 </div>
+
                 <div class="toolbar">
                   <input
                     id="search"
@@ -137,16 +284,22 @@
                     Export CSV
                   </button>
                 </div>
+
                 <p id="allowance" class="field-hint"></p>
+
                 <div id="links" class="link-list"></div>
+
                 <p id="empty" class="hidden">
                   No links yet. Create a short link or import a batch.
                 </p>
               </div>
+
               <aside>
                 <form id="link-form" class="composer">
                   <div class="eyebrow">CREATE A CONNECTION</div>
+
                   <h2 id="form-heading">Make it a short link.</h2>
+
                   <label for="destination">Destination URL</label
                   ><input
                     id="destination"
@@ -161,10 +314,13 @@
                     maxlength="64"
                     placeholder="annual-report"
                   />
+
                   <p class="field-hint">
                     Lowercase letters, numbers, and hyphens.
                   </p>
+
                   <div id="preview" class="link-preview"></div>
+
                   <button id="submit" class="button primary" type="submit">
                     Create short link</button
                   ><button
@@ -175,8 +331,10 @@
                     Cancel editing
                   </button>
                 </form>
+
                 <section id="result" class="box hidden">
                   <h2>Ready to share.</h2>
+
                   <a
                     id="result-link"
                     target="_blank"
@@ -189,36 +347,47 @@
               </aside>
             </div>
           </section>
+
           <section id="view-designs" class="hidden">
             <div class="section-heading">
               <h2>Company QR designs</h2>
+
               <button id="design-new" class="button secondary">
                 Create QR code
               </button>
             </div>
+
             <p>
               Create a QR code from any website URL, or use an existing company
               short link.
             </p>
+
             <div id="designs" class="link-list"></div>
           </section>
+
           <section id="view-bulk" class="hidden">
             <div class="box">
               <div class="eyebrow">FROM SPREADSHEET TO PRINT</div>
+
               <h2>One workflow. A hundred connections.</h2>
+
               <p>
                 Import up to 100 rows. Preview, create, then download your QR
                 set and print sheets.
               </p>
+
               <div class="form-grid">
                 <div>
                   <label for="bulk-mode">Create</label
                   ><select id="bulk-mode">
                     <option value="both">Short links + QR designs</option>
+
                     <option value="links">Short links only</option>
+
                     <option value="qr">Direct QR designs only</option>
                   </select>
                 </div>
+
                 <div>
                   <label for="bulk-file">Import CSV</label
                   ><input
@@ -230,60 +399,81 @@
                   </button>
                 </div>
               </div>
+
               <label for="bulk-input">Paste CSV or one URL per line</label
               ><textarea
                 id="bulk-input"
                 rows="6"
                 placeholder="title,url,slug"
               ></textarea>
+
               <p class="field-hint">
                 CSV columns: title, url, slug. Short names are required when
                 creating links.
               </p>
+
               <button id="bulk-preview" class="button secondary">
                 Preview rows
               </button>
+
               <div id="bulk-style" class="form-grid"></div>
+
               <div id="bulk-sample" aria-label="Sample batch QR preview"></div>
+
               <div id="bulk-preview-table" class="table-scroll"></div>
+
               <button id="bulk-create" class="button primary" disabled>
                 Create batch
               </button>
+
               <p id="bulk-status" role="status"></p>
             </div>
+
             <div class="box">
               <h2>Saved batches</h2>
+
               <div id="bulk-jobs"></div>
+
               <div id="bulk-results" class="table-scroll"></div>
+
               <div class="form-grid">
                 <div>
                   <label for="bulk-format">QR files</label
                   ><select id="bulk-format">
                     <option value="svg">SVG · vector</option>
+
                     <option value="png">PNG · 2048px</option>
+
                     <option value="jpeg">JPG · 2048px</option>
                   </select>
                 </div>
+
                 <div>
                   <label for="print-paper">Print paper</label
                   ><select id="print-paper">
                     <option value="a4">A4</option>
+
                     <option value="letter">US Letter</option>
                   </select>
                 </div>
+
                 <div>
                   <label for="print-caption">Print captions</label
                   ><select id="print-caption">
                     <option value="both">Titles and URLs</option>
+
                     <option value="title">Titles only</option>
+
                     <option value="none">No captions</option>
                   </select>
                 </div>
               </div>
+
               <p class="field-hint">
                 Six codes per page. QR image: 42 × 42 mm, including its clear
                 border. Scan-test your printed sheet.
               </p>
+
               <div class="action-row">
                 <button id="bulk-resume" class="button secondary" disabled>
                   Resume / retry batch</button
@@ -297,10 +487,13 @@
               </div>
             </div>
           </section>
+
           <section id="view-team" class="hidden">
             <div class="box">
               <h2>Company members</h2>
+
               <div id="members"></div>
+
               <form id="invite-form" class="hidden">
                 <label for="invite-email">Invite a colleague</label
                 ><input
@@ -312,7 +505,9 @@
                   Create invitation link
                 </button>
               </form>
+
               <p id="invite-result" role="status"></p>
+
               <input
                 id="invite-url"
                 class="hidden"
@@ -322,39 +517,52 @@
                 Copy invitation
               </button>
             </div>
+
             <div class="box">
               <h2>Company QR presets</h2>
+
               <p>
                 Save consistent styles from the bulk studio. Presets are shared
                 with everyone in this company.
               </p>
+
               <div id="presets"></div>
             </div>
           </section>
         </div>
+
         <section id="view-admin" class="hidden">
           <div class="box">
             <h2>Company access requests</h2>
+
             <div id="admin-requests"></div>
           </div>
+
           <div class="box">
             <h2>Original eight links</h2>
+
             <p>
               Visible here only to the platform administrator. Published QR
               destinations remain active.
             </p>
+
             <div id="admin-legacy"></div>
           </div>
         </section>
+
         <p id="app-error" class="form-error hidden" role="alert"></p>
+
         <footer>
           <span>TinyTrail · Company link &amp; QR studio</span
           ><span>Small links. Considered connections.</span>
         </footer>
       </main>
     </div>
+
     <!--ACCOUNT_DIALOG-->
+
     <div class="toast hidden" id="toast" role="status"></div>
+
     <script type="module" src="./app.mjs"></script>
   </body>
 </html>

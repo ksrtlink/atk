@@ -9,7 +9,9 @@
     "deploy": "npm run build && node scripts/check-config.mjs && wrangler deploy",
     "test": "node --experimental-sqlite scripts/test.mjs",
     "db:local": "wrangler d1 migrations apply DB --local",
-    "db:remote": "wrangler d1 migrations apply DB --remote"
+    "db:remote": "wrangler d1 migrations apply DB --remote",
+    "deploy:staging": "npm run build && node scripts/check-staging.mjs && wrangler deploy --config wrangler.staging.jsonc",
+    "test:analytics:browser": "node tests/browser-analytics.mjs"
   },
   "dependencies": {
     "fflate": "0.8.3",
