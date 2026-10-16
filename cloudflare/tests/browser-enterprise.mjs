@@ -272,6 +272,11 @@ try {
     "Export files verified at " + decodeURIComponent(downloadDir.pathname),
   );
 
+  await fill("bulk-mode","qr");
+  await fill("bulk-input","https://example.com/report?regions=emea,apac");
+  await click("bulk-preview");
+  await wait("!document.getElementById('bulk-create').disabled");
+  assert.equal(await ev("document.querySelector('#bulk-preview-table input[aria-label=url]').value"),"https://example.com/report?regions=emea,apac");
   await ev("document.querySelector('[data-view=links]').click()");
   await shot("enterprise-desktop", 1440, 1000);
   await shot("enterprise-mobile", 390, 844);

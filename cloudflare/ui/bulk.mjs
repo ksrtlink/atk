@@ -336,7 +336,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
     if (source.length > 200000)
       throw Error("Use an input smaller than 200 KB.");
     let data;
-    if (/^https?:\/\//i.test(source) && !source.includes(",")) {
+    if (/^https?:\/\//i.test(source)) {
       data = source
         .split(/\r?\n/)
         .filter(Boolean)
