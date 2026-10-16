@@ -37,3 +37,7 @@ Use a distinct staging Worker and D1 database, without production domain routes.
 Back up and verify the production database before additive migration. Stage collection enabled only for seeded test workspace; production flags stay off until policy is confirmed. Deploy compatible /q resolver before issuing public codes. Prefer disabling collection/creation over rollback to a Worker that cannot resolve /q. Keep raw records on disable and document any collection gap. Production activation requires explicit workspace opt-in and policy confirmation, and no staging fixture or authentication bypass is deployed to production.
 
 Policy confirmed by the user on 16 October 2026: 90-day raw-event retention, UTC reporting, no IP/cookie/full-user-agent storage. Hourly bounded pruning keeps the same retention deadline with a maximum hourly execution delay.
+
+## Company assignment hardening — 16 October 2026
+
+Ordinary verified accounts are restricted to one stored company membership and the studio displays that company without a picker. A missing workspace header derives this assignment; a conflicting header is forbidden. Invitations and pending approvals cannot create a second assignment, including competing invitation acceptance. Ambiguous pre-existing assignments return no selectable company and private company requests fail closed pending platform-admin review. Platform admins can switch only between explicit memberships, not a directory of all companies. Owner/member asset permissions and all issued URLs are unchanged.

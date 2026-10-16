@@ -141,6 +141,9 @@ try {
   });
   await send("Page.navigate", { url: "http://127.0.0.1:4174/" });
   await wait("document.getElementById('motion-toggle')");
+  await wait("document.readyState === 'complete'");
+  const theme = await ev("({accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),radius:getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()})");
+  assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).backgroundColor"), "rgb(255, 94, 31)");
   await shot("landing-desktop");
   await shot("landing-mobile", 390, 844);
   await click("motion-toggle");
@@ -163,6 +166,8 @@ try {
     "document.getElementById('notice')?.textContent.includes('Sign in')",
   );
   assert.equal(await ev("document.getElementById('open-qr').disabled"), true);
+  assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"), "none");
+  assert.equal(await ev("getComputedStyle(document.getElementById('assigned-company')).display"), "none");
   assert.equal(await ev("fetch('/manage/links.json').then(r=>r.status)"), 404);
   await login("alice");
   await fill("company-name", "Northstar Company");
@@ -199,6 +204,13 @@ try {
     ),
     true,
   );
+  assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"), "none");
+  assert.equal(await ev("document.getElementById('assigned-company-name').textContent"), "Northstar Company");
+  assert.equal(await ev("getComputedStyle(document.querySelector('.button.primary')).backgroundColor"), "rgb(255, 94, 31)");
+  assert.deepEqual(await ev("({accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),radius:getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()})"), theme);
+  const forged = await ev(`fetch('/api/links',{headers:{Authorization:${JSON.stringify("Bearer " + tokens.alice.idToken)},'X-Workspace-Id':'tinytrail-internal'}}).then(r=>r.status)`);
+  assert.equal(forged,403);
+
   await click("open-qr");
   await wait("document.getElementById('qr-dialog')?.open");
   await ev(

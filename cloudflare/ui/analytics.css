@@ -33,10 +33,10 @@
   display: block;
 }
 #analytics-chart .analytics-bar {
-  fill: #ff5e1f;
+  fill: var(--accent);
 }
 #analytics-chart text {
-  fill: #62626a;
+  fill: var(--muted);
   font-family: inherit;
   font-size: 11px;
 }

@@ -583,3 +583,54 @@ test("failed transfer is atomic when allowance is insufficient and can be retrie
 });
 
 test('two active batch runners converge on one link and one design',async()=>{const f=fixture(),wid=await f.approve(),id=crypto.randomUUID();await f.data('/api/bulk',{wid,method:'POST',body:{id,mode:'both',settings:style,rows:[{title:'Concurrent',url:'https://example.com/concurrent',slug:'concurrent'}]}});const results=await Promise.all([f.request('/api/bulk/'+id+'/run',{wid,method:'POST',body:{}}),f.request('/api/bulk/'+id+'/run',{wid,method:'POST',body:{}})]);for(const r of results)assert.equal(r.status,200,await r.text());const job=await f.data('/api/bulk/'+id,{wid});assert.ok(job.rows[0].result);assert.equal(job.rows[0].error,null);assert.equal((await f.data('/api/links',{wid})).links.length,1);assert.equal((await f.data('/api/designs',{wid})).designs.length,1);});
+
+
+test("ordinary accounts open one assigned company and cannot join a second company", async () => {
+  const f = fixture(), wid = await f.approve(), other = await f.approve("charlie");
+  const me = await f.data("/api/me");
+  assert.equal(me.assignedWorkspaceId, wid);
+  assert.equal(me.canSwitchCompanies, false);
+  assert.equal(me.workspaces.length, 1);
+  assert.equal((await f.request("/api/links")).status, 200);
+  assert.equal((await f.request("/api/links", {wid: other})).status, 403);
+  const invite = await f.data("/api/invitations", {user:"charlie", wid:other, method:"POST", body:{email:"alice@example.com"}});
+  const result = await f.request("/api/invitations/accept", {method:"POST", body:{token:new URL(invite.url).hash.slice(8)}});
+  assert.equal(result.status, 409);
+  assert.equal(f.db.sql.prepare("SELECT count(*) AS n FROM memberships WHERE uid='alice'").get().n, 1);
+  assert.equal(f.db.sql.prepare("SELECT accepted_by FROM invitations").get().accepted_by, null);
+});
+
+test("pending company approval cannot override an invitation assignment", async () => {
+  const f = fixture(), wid = await f.approve("charlie");
+  await f.data("/api/access-requests", {method:"POST", body:{company:"Alice",website:"https://example.com",useCase:"Links"}});
+  const invite = await f.data("/api/invitations", {user:"charlie", wid, method:"POST", body:{email:"alice@example.com"}});
+  await f.data("/api/invitations/accept", {method:"POST", body:{token:new URL(invite.url).hash.slice(8)}});
+  assert.equal((await f.request("/api/admin/requests/alice",{user:"admin",method:"POST",body:{action:"approve"}})).status,409);
+  assert.equal(f.db.sql.prepare("SELECT count(*) AS n FROM workspaces WHERE id='company-alice'").get().n,0);
+  assert.equal((await f.data("/api/me")).assignedWorkspaceId,wid);
+});
+
+test("ambiguous ordinary assignments fail closed while admin switching still requires membership", async () => {
+  const f=fixture(), wid=await f.approve(), other=await f.approve("bob");
+  f.db.sql.prepare("INSERT INTO memberships(workspace_id,uid,role) VALUES(?,?,'member')").run(other,"alice");
+  const me=await f.data("/api/me");
+  assert.equal(me.companyAccessIssue,"multiple_assignments");
+  assert.deepEqual(me.workspaces,[]);
+  for(const id of [wid,other]) assert.equal((await f.request("/api/links",{wid:id})).status,403);
+  await f.data("/api/me",{user:"admin"});
+  f.db.sql.prepare("INSERT INTO memberships(workspace_id,uid,role) VALUES(?,'admin','member')").run(wid);
+  const admin=await f.data("/api/me",{user:"admin"});
+  assert.equal(admin.canSwitchCompanies,true);
+  assert.equal((await f.request("/api/links",{user:"admin",wid})).status,200);
+  assert.equal((await f.request("/api/links",{user:"admin",wid:other})).status,403);
+});
+
+
+test("simultaneous invitations to two companies assign only one company", async () => {
+  const f=fixture(), a=await f.approve(), b=await f.approve("bob");
+  const invitations=await Promise.all([[a,"alice"],[b,"bob"]].map(([wid,user])=>f.data("/api/invitations",{wid,user,method:"POST",body:{email:"charlie@example.com"}})));
+  const responses=await Promise.all(invitations.map(invite=>f.request("/api/invitations/accept",{user:"charlie",method:"POST",body:{token:new URL(invite.url).hash.slice(8)}})));
+  assert.deepEqual(responses.map(r=>r.status).sort(),[200,409]);
+  assert.equal(f.db.sql.prepare("SELECT count(*) AS n FROM memberships WHERE uid='charlie'").get().n,1);
+  assert.equal(f.db.sql.prepare("SELECT count(*) AS n FROM invitations WHERE accepted_by='charlie'").get().n,1);
+});

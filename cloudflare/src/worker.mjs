@@ -224,11 +224,11 @@ export function createApp(authenticate = verifyFirebaseToken) {
           .split(",")
           .map((x) => x.trim().toLowerCase())
           .filter(Boolean);
-        const admin = (env.ADMIN_EMAILS || "")
+        const adminEmails = (env.ADMIN_EMAILS || "")
           .split(",")
           .map((x) => x.trim().toLowerCase())
-          .filter(Boolean)
-          .includes(user.email);
+          .filter(Boolean);
+        const admin = adminEmails.includes(user.email);
         if (
           !admin &&
           domains.length &&
@@ -264,7 +264,10 @@ export function createApp(authenticate = verifyFirebaseToken) {
           return json({
             user: { uid: user.uid, email: user.email, name: user.name },
             platformAdmin: admin,
-            workspaces: memberships,
+            workspaces: admin || memberships.length === 1 ? memberships : [],
+            assignedWorkspaceId: !admin && memberships.length === 1 ? memberships[0].id : null,
+            canSwitchCompanies: admin && memberships.length > 1,
+            companyAccessIssue: !admin && memberships.length > 1 ? "multiple_assignments" : null,
             accessRequest: await first(
               "SELECT * FROM access_requests WHERE uid=?",
               user.uid,
@@ -299,6 +302,8 @@ export function createApp(authenticate = verifyFirebaseToken) {
             user.uid,
           );
           if (old) return json({ request: old });
+          if (!admin && memberships.length)
+            fail(409, "Your account already has an assigned company. Contact the platform administrator to change it.", "company_assignment");
           await stmt(
             "INSERT INTO access_requests(uid,company,website,use_case) VALUES(?,?,?,?)",
             user.uid,
@@ -352,25 +357,38 @@ export function createApp(authenticate = verifyFirebaseToken) {
               return json({ ok: true });
             }
             if (b.action !== "approve") fail(400, "Choose approve or decline.");
+            const targetUser = await first("SELECT email FROM users WHERE uid=?", r.uid),
+              targetAdmin = adminEmails.includes(targetUser?.email),
+              assigned = await first("SELECT workspace_id FROM memberships WHERE uid=? LIMIT 1", r.uid);
+            if (!targetAdmin && assigned)
+              fail(409, "This account already has an assigned company. Resolve its assignment before approving another company.", "company_assignment");
             const id = "company-" + r.uid;
             await db.batch([
               stmt(
-                "INSERT INTO workspaces(id,name,website) VALUES(?,?,?)",
+                "INSERT INTO workspaces(id,name,website) SELECT ?,?,? WHERE ? OR NOT EXISTS(SELECT 1 FROM memberships WHERE uid=?)",
                 id,
                 r.company,
                 r.website,
-              ),
-              stmt(
-                "INSERT INTO memberships(workspace_id,uid,role) VALUES(?,?,'owner')",
-                id,
+                targetAdmin ? 1 : 0,
                 r.uid,
               ),
               stmt(
-                "UPDATE access_requests SET status='approved',workspace_id=? WHERE uid=? AND status='pending'",
+                "INSERT INTO memberships(workspace_id,uid,role) SELECT id,?,'owner' FROM workspaces WHERE id=? AND (? OR NOT EXISTS(SELECT 1 FROM memberships WHERE uid=?))",
+                r.uid,
+                id,
+                targetAdmin ? 1 : 0,
+                r.uid,
+              ),
+              stmt(
+                "UPDATE access_requests SET status='approved',workspace_id=? WHERE uid=? AND status='pending' AND EXISTS(SELECT 1 FROM memberships WHERE uid=? AND workspace_id=?)",
                 id,
                 r.uid,
+                r.uid,
+                id,
               ),
             ]);
+            if (!(await first("SELECT 1 FROM memberships WHERE uid=? AND workspace_id=?", r.uid, id)))
+              fail(409, "The company assignment changed. Refresh this request.", "company_assignment");
             return json({ workspaceId: id });
           }
           fail(404, "Endpoint not found.");
@@ -393,27 +411,37 @@ export function createApp(authenticate = verifyFirebaseToken) {
               "This invitation is expired, already used, or belongs to another email.",
               "invitation",
             );
+          if (!admin && memberships.some(w => w.id !== invite.workspace_id))
+            fail(409, "Your account already belongs to another company. Contact the platform administrator to change your assignment.", "company_assignment");
           await db.batch([
             stmt(
-              "INSERT OR IGNORE INTO memberships(workspace_id,uid,role) SELECT workspace_id,?,'member' FROM invitations WHERE id=? AND accepted_by IS NULL AND expires_at>? AND email=?",
+              "INSERT OR IGNORE INTO memberships(workspace_id,uid,role) SELECT workspace_id,?,'member' FROM invitations WHERE id=? AND accepted_by IS NULL AND expires_at>? AND email=? AND (? OR NOT EXISTS(SELECT 1 FROM memberships WHERE uid=? AND workspace_id<>?))",
               user.uid,
               invite.id,
               Date.now(),
               user.email,
+              admin ? 1 : 0,
+              user.uid,
+              invite.workspace_id,
             ),
             stmt(
-              "UPDATE invitations SET accepted_by=? WHERE id=? AND accepted_by IS NULL AND email=?",
+              "UPDATE invitations SET accepted_by=? WHERE id=? AND accepted_by IS NULL AND email=? AND EXISTS(SELECT 1 FROM memberships WHERE uid=? AND workspace_id=?)",
               user.uid,
               invite.id,
               user.email,
+              user.uid,
+              invite.workspace_id,
             ),
           ]);
+          if (!(await first("SELECT 1 FROM memberships WHERE uid=? AND workspace_id=?", user.uid, invite.workspace_id)))
+            fail(409, "Your company assignment changed. Contact the platform administrator.", "company_assignment");
           return json({ workspaceId: invite.workspace_id });
         }
-        const wid = request.headers.get("X-Workspace-Id"),
+        const assigned = !admin && memberships.length === 1 ? memberships[0] : null;
+        const wid = request.headers.get("X-Workspace-Id") || assigned?.id,
           membership = memberships.find((w) => w.id === wid);
-        if (!membership)
-          fail(403, "Select an approved company workspace.", "membership");
+        if (!membership || (!admin && assigned?.id !== wid))
+          fail(403, "Your account does not have access to this company. Contact your administrator.", "membership");
         const owner = () => {
           if (membership.role !== "owner")
             fail(403, "Company owner access is required.", "forbidden");

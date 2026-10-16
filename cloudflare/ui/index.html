@@ -21,7 +21,8 @@
 
     <link rel="stylesheet" href="./accounts.css" />
 
-    <link rel="stylesheet" href="./tinytrail.css?v=enterprise-1" />
+    <link rel="stylesheet" href="/theme.css" />
+    <link rel="stylesheet" href="./tinytrail.css" />
 
     <link rel="stylesheet" href="./enterprise.css" />
     <link rel="stylesheet" href="./analytics.css" />
@@ -39,10 +40,17 @@
           width="170"
           height="36"
         /><span class="brand-sub">COMPANY WORKSPACE</span></a
-      ><label for="workspace-select">Company</label
-      ><select id="workspace-select" aria-label="Active company">
-        <option>No company selected</option>
-      </select>
+      >
+      <div id="assigned-company" class="company-context hidden">
+        <span class="company-context-label">Your company</span>
+        <strong id="assigned-company-name"></strong>
+        <span id="assigned-company-role" class="company-context-role"></span>
+      </div>
+      <div id="company-switcher" class="company-context hidden">
+        <label for="workspace-select" class="company-context-label">Admin company view</label>
+        <select id="workspace-select" aria-label="Authorized company"></select>
+        <span class="company-context-role">Approved memberships only</span>
+      </div>
 
       <nav class="enterprise-nav" aria-label="Workspace">
         <button data-view="links" class="active">Link library</button

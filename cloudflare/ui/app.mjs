@@ -171,6 +171,15 @@ function ui() {
           : "Request a company workspace, or accept an invitation from your owner."
         : "";
   $("workspace-label").textContent = workspace?.name || "Company workspace";
+  const switchable = !!me?.canSwitchCompanies;
+  $("company-switcher").classList.toggle("hidden", !switchable);
+  $("assigned-company").classList.toggle("hidden", !workspace || switchable);
+  $("assigned-company-name").textContent = workspace?.name || "";
+  $("assigned-company-role").textContent = workspace ? (workspace.role === "owner" ? "Company owner" : "Team member") : "";
+  if (me?.companyAccessIssue) {
+    $("notice").textContent = "Your company assignment needs review. Contact the platform administrator.";
+    $("access-form").classList.add("hidden");
+  }
   $("open-qr").disabled = !workspace;
   $("transfer-panel").classList.toggle(
     "hidden",
@@ -296,12 +305,9 @@ async function load() {
       $("workspace-select").append(new Option(w.name, w.id));
     if (!me.workspaces.length)
       $("workspace-select").append(new Option("No approved company", ""));
-    workspace =
-      me.workspaces.find(
-        (w) => w.id === sessionStorage.getItem("tinytrail.workspace"),
-      ) ||
-      me.workspaces[0] ||
-      null;
+    workspace = (me.canSwitchCompanies
+      ? me.workspaces.find(w => w.id === sessionStorage.getItem("tinytrail.workspace")) || me.workspaces[0]
+      : me.workspaces.find(w => w.id === me.assignedWorkspaceId) || me.workspaces[0]) || null;
     if (workspace) $("workspace-select").value = workspace.id;
     ui();
     if (workspace) await refreshLibrary();
@@ -572,6 +578,7 @@ $("auth-reset").onclick = act(async () => {
   message("If this account exists, a reset email is on its way.");
 });
 $("workspace-select").onchange = act(async () => {
+  if (!me?.canSwitchCompanies) return;
   epoch++;
   workspace =
     me.workspaces.find((w) => w.id === $("workspace-select").value) || null;
