@@ -1,113 +1,878 @@
-import { verifyFirebaseToken } from './auth.mjs';
-import { Problem, publicOrigin, linkInput, designInput, linkRecord, designRecord } from './domain.mjs';
-
+import { verifyFirebaseToken } from "./auth.mjs";
+import {
+  Problem,
+  publicOrigin,
+  linkInput,
+  designInput,
+  linkRecord,
+  designRecord,
+} from "./domain.mjs";
 const security = {
-  'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'no-referrer',
-  'X-Frame-Options':'DENY', 'Permissions-Policy':'camera=(), microphone=(), geolocation=()'
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
+  "X-Frame-Options": "DENY",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 };
-function json(value,status=200){return new Response(JSON.stringify(value),{status,headers:{...security,'Content-Type':'application/json;charset=utf-8','Cache-Control':'private, no-store'}});}
-function boundedLimit(value,fallback){const n=Number(value);return Number.isInteger(n)&&n>0&&n<=1000?n:fallback;}
-function uuid(value){return typeof value==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);}
-async function bodyJSON(request){
-  if(!request.headers.get('Content-Type')?.startsWith('application/json'))throw new Problem(415,'Send JSON data.','validation');
-  if(Number(request.headers.get('Content-Length')||0)>20000)throw new Problem(413,'The request is too large.','validation');
-  const reader=request.body?.getReader();if(!reader)throw new Problem(400,'Missing request body.','validation');
-  let length=0,chunks=[];
-  while(true){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>20000){await reader.cancel();throw new Problem(413,'The request is too large.','validation');}chunks.push(value);}
-  try{const bytes=new Uint8Array(length);let i=0;for(const chunk of chunks){bytes.set(chunk,i);i+=chunk.length;}const data=JSON.parse(new TextDecoder().decode(bytes));if(!data||Array.isArray(data)||typeof data!=='object')throw new Error();return data;}
-  catch{throw new Problem(400,'Invalid JSON data.','validation');}
+const json = (value, status = 200) =>
+  new Response(JSON.stringify(value), {
+    status,
+    headers: {
+      ...security,
+      "Content-Type": "application/json;charset=utf-8",
+      "Cache-Control": "private, no-store",
+    },
+  });
+const fail = (status, message, code = "validation") => {
+  throw new Problem(status, message, code);
+};
+const uuid = (value) =>
+  typeof value === "string" &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+const limit = (value) =>
+  Number.isInteger(Number(value)) && Number(value) > 0 && Number(value) <= 1000
+    ? Number(value)
+    : 200;
+const text = (value, max = 100) => {
+  if (typeof value !== "string" || !value.trim() || value.trim().length > max)
+    fail(400, `Enter text of up to ${max} characters.`);
+  return value.trim();
+};
+const email = (value) => {
+  const s = text(value, 254).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) fail(400, "Enter a valid email.");
+  return s;
+};
+async function hash(value) {
+  return [
+    ...new Uint8Array(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+    ),
+  ]
+    .map((x) => x.toString(16).padStart(2, "0"))
+    .join("");
 }
-function checkOrigin(request){const origin=request.headers.get('Origin');if(origin&&origin!==new URL(request.url).origin)throw new Problem(403,'Cross-origin requests are not allowed.','forbidden');}
-
-// The injected authenticator is for tests only. Production always uses Firebase signature verification.
-export function createApp(authenticate=verifyFirebaseToken){
-  return {async fetch(request,env){
-    try{
-      const url=new URL(request.url);const path=url.pathname;
-      if(path.startsWith('/api/')){
-        checkOrigin(request);
-        if(path==='/api/config'&&request.method==='GET')return json({
-          authReady:!!(env.FIREBASE_PROJECT_ID&&env.FIREBASE_API_KEY),
-          firebase:{projectId:env.FIREBASE_PROJECT_ID||'',apiKey:env.FIREBASE_API_KEY||''},
-          publicOrigin:publicOrigin(env,request),allowedEmailDomains:(env.ALLOWED_EMAIL_DOMAINS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean)
-        });
-        if(!env.DB)throw new Problem(503,'Storage is not configured yet.','configuration');
-        // The original eight records are shared read-only; they never expose profile data.
-        if(path==='/api/legacy'&&request.method==='GET'){
-          const result=await env.DB.prepare('SELECT * FROM links WHERE legacy=1 ORDER BY slug LIMIT 100').all();
-          return json({links:result.results.map(linkRecord)});
-        }
-        const header=request.headers.get('Authorization')||'';
-        if(!header.startsWith('Bearer '))throw new Problem(401,'Sign in to your profile.','unauthenticated');
-        let user;
-        try{user=await authenticate(header.slice(7),env);}catch{throw new Problem(401,'Your session expired. Please sign in again.','unauthenticated');}
-        if(!user.verified)throw new Problem(403,'Verify your email address before opening your profile.','email_unverified');
-        const domains=(env.ALLOWED_EMAIL_DOMAINS||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
-        if(domains.length&&!domains.includes(user.email.split('@').pop()))throw new Problem(403,'This email domain does not have access to the workspace.','email_domain');
-        await env.DB.prepare('INSERT INTO users(uid,email,display_name) VALUES(?,?,?) ON CONFLICT(uid) DO UPDATE SET email=excluded.email,display_name=excluded.display_name').bind(user.uid,user.email,user.name).run();
-        if(path==='/api/me'&&request.method==='GET')return json({user:{uid:user.uid,email:user.email,name:user.name}});
-        if(path==='/api/links'&&request.method==='GET'){
-          const result=await env.DB.prepare('SELECT * FROM links WHERE owner_uid=? ORDER BY created_at DESC LIMIT 1000').bind(user.uid).all();return json({links:result.results.map(linkRecord)});
-        }
-        if(path==='/api/links'&&request.method==='POST'){
-          const data=linkInput(await bodyJSON(request),env,request);
-          const requestId=request.headers.get('Idempotency-Key');
-          if(!uuid(requestId))throw new Problem(400,'A valid request ID is required.','validation');
-          const prior=await env.DB.prepare('SELECT * FROM links WHERE owner_uid=? AND request_id=?').bind(user.uid,requestId).first();
-          if(prior){if(prior.slug!==data.slug||prior.destination!==data.destination)throw new Problem(409,'This request ID was already used for a different link.','conflict');return json({link:linkRecord(prior)},200);}
-          const shortUrl=`${publicOrigin(env,request)}/r/${data.slug}`;
-          let row;
-          try{row=await env.DB.prepare('INSERT INTO links(slug,destination,title,owner_uid,short_url,request_id) SELECT ?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM links WHERE owner_uid=?) < ? RETURNING *').bind(data.slug,data.destination,data.title,user.uid,shortUrl,requestId,user.uid,boundedLimit(env.MAX_LINKS_PER_USER,200)).first();}
-          catch(error){if(String(error).includes('UNIQUE'))throw new Problem(409,'That short name is already in use. Choose another.','conflict');throw error;}
-          if(!row)throw new Problem(429,'Your profile has reached its link limit.','quota');
-          return json({link:linkRecord(row)},201);
-        }
-        const match=path.match(/^\/api\/links\/([a-z0-9-]+)$/);
-        if(match&&request.method==='PATCH'){
-          const old=await env.DB.prepare('SELECT * FROM links WHERE slug=? AND owner_uid=? AND legacy=0').bind(match[1],user.uid).first();
-          if(!old)throw new Problem(404,'This link is not in your profile.','not_found');
-          const body=await bodyJSON(request);const data=linkInput({slug:old.slug,destination:body.destination},env,request);
-          if(!Number.isInteger(body.version))throw new Problem(400,'The saved version is required.','validation');
-          const row=await env.DB.prepare("UPDATE links SET destination=?,version=version+1,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE slug=? AND owner_uid=? AND version=? AND legacy=0 RETURNING *").bind(data.destination,old.slug,user.uid,body.version).first();
-          if(!row)throw new Problem(409,'This link changed in another tab. Refresh before editing.','conflict');return json({link:linkRecord(row)});
-        }
-        if(path==='/api/designs'&&request.method==='GET'){
-          const result=await env.DB.prepare('SELECT * FROM qr_designs WHERE owner_uid=? ORDER BY updated_at DESC LIMIT 1000').bind(user.uid).all();return json({designs:result.results.map(designRecord)});
-        }
-        if(path==='/api/designs'&&request.method==='POST'){
-          const body=await bodyJSON(request);const data=designInput(body);
-          if(!uuid(body.id))throw new Problem(400,'A valid design ID is required.','validation');
-          const prior=await env.DB.prepare('SELECT * FROM qr_designs WHERE id=?').bind(body.id).first();
-          if(prior){
-            if(prior.owner_uid!==user.uid)throw new Problem(404,'Design not found.','not_found');
-            if(!Number.isInteger(body.version)){
-              if(prior.title===data.title&&prior.url===data.url&&prior.settings_json===JSON.stringify(data.settings))return json({design:designRecord(prior)});
-              throw new Problem(409,'This design is already saved. Reopen it before changing it.','conflict');
-            }
-            const row=await env.DB.prepare("UPDATE qr_designs SET title=?,url=?,settings_json=?,version=version+1,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND owner_uid=? AND version=? RETURNING *").bind(data.title,data.url,JSON.stringify(data.settings),body.id,user.uid,body.version).first();
-            if(!row)throw new Problem(409,'This design changed in another tab. Reopen it before saving.','conflict');return json({design:designRecord(row)});
-          }
-          const row=await env.DB.prepare('INSERT INTO qr_designs(id,owner_uid,title,url,settings_json) SELECT ?,?,?,?,? WHERE (SELECT COUNT(*) FROM qr_designs WHERE owner_uid=?) < ? RETURNING *').bind(body.id,user.uid,data.title,data.url,JSON.stringify(data.settings),user.uid,boundedLimit(env.MAX_DESIGNS_PER_USER,200)).first();
-          if(!row)throw new Problem(429,'Your profile has reached its QR design limit.','quota');return json({design:designRecord(row)},201);
-        }
-        throw new Problem(404,'API endpoint not found.','not_found');
-      }
-      if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405,headers:{...security,'Allow':'GET, HEAD'}});
-      if(path==='/')return Response.redirect(`${url.origin}/manage/`,302);
-      const redirect=path.match(/^\/r\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/);
-      if(redirect){
-        if(!env.DB)return new Response('Service temporarily unavailable',{status:503,headers:security});
-        const row=await env.DB.prepare('SELECT destination FROM links WHERE slug=?').bind(redirect[1]).first();
-        if(!row)return new Response('This short link was not found.',{status:404,headers:security});
-        return new Response(null,{status:302,headers:{...security,'Location':row.destination,'Cache-Control':'no-store'}});
-      }
-      if(env.ASSETS)return env.ASSETS.fetch(request);
-      return new Response('Not found',{status:404,headers:security});
-    }catch(error){
-      if(error instanceof Problem)return json({error:error.message,code:error.code},error.status);
-      // Do not echo database errors, tokens, or request bodies to clients or logs.
-      return json({error:'The service could not complete this request. Please try again.',code:'service_error'},503);
+async function bodyJSON(request) {
+  if (!request.headers.get("Content-Type")?.startsWith("application/json"))
+    fail(415, "Send JSON data.");
+  const reader = request.body?.getReader();
+  if (!reader) fail(400, "Missing request body.");
+  let length = 0,
+    chunks = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    length += value.length;
+    if (length > 200000) {
+      await reader.cancel();
+      fail(413, "The request is too large.");
     }
-  }};
+    chunks.push(value);
+  }
+  try {
+    const bytes = new Uint8Array(length);
+    let i = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, i);
+      i += chunk.length;
+    }
+    const data = JSON.parse(new TextDecoder().decode(bytes));
+    if (!data || Array.isArray(data) || typeof data !== "object") throw Error();
+    return data;
+  } catch {
+    fail(400, "Invalid JSON data.");
+  }
+}
+export function createApp(authenticate = verifyFirebaseToken) {
+  return {
+    async fetch(request, env) {
+      try {
+        const url = new URL(request.url),
+          path = url.pathname,
+          method = request.method;
+        if (!path.startsWith("/api/")) {
+          if (!["GET", "HEAD"].includes(method))
+            return new Response("Method not allowed", {
+              status: 405,
+              headers: { ...security, Allow: "GET, HEAD" },
+            });
+          const redirect = path.match(/^\/r\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/);
+          if (redirect) {
+            if (!env.DB) fail(503, "Storage unavailable.");
+            const row = await env.DB.prepare(
+              "SELECT destination FROM links WHERE slug=?",
+            )
+              .bind(redirect[1])
+              .first();
+            return row
+              ? new Response(null, {
+                  status: 302,
+                  headers: {
+                    ...security,
+                    Location: row.destination,
+                    "Cache-Control": "no-store",
+                  },
+                })
+              : new Response("This short link was not found.", {
+                  status: 404,
+                  headers: security,
+                });
+          }
+          return env.ASSETS
+            ? env.ASSETS.fetch(request)
+            : new Response("Not found", { status: 404 });
+        }
+        if (
+          request.headers.get("Origin") &&
+          request.headers.get("Origin") !== url.origin
+        )
+          fail(403, "Cross-origin requests are not allowed.", "forbidden");
+        if (path === "/api/config" && method === "GET")
+          return json({
+            authReady: !!(env.FIREBASE_PROJECT_ID && env.FIREBASE_API_KEY),
+            firebase: {
+              projectId: env.FIREBASE_PROJECT_ID || "",
+              apiKey: env.FIREBASE_API_KEY || "",
+            },
+            publicOrigin: publicOrigin(env, request),
+          });
+        if (!env.DB) fail(503, "Storage is not configured.", "configuration");
+        const header = request.headers.get("Authorization") || "";
+        if (!header.startsWith("Bearer "))
+          fail(401, "Sign in to your company workspace.", "unauthenticated");
+        let user;
+        try {
+          user = await authenticate(header.slice(7), env);
+        } catch {
+          fail(
+            401,
+            "Your session expired. Please sign in again.",
+            "unauthenticated",
+          );
+        }
+        if (!user.verified)
+          fail(403, "Verify your email before continuing.", "email_unverified");
+        const domains = (env.ALLOWED_EMAIL_DOMAINS || "")
+          .split(",")
+          .map((x) => x.trim().toLowerCase())
+          .filter(Boolean);
+        const admin = (env.ADMIN_EMAILS || "")
+          .split(",")
+          .map((x) => x.trim().toLowerCase())
+          .filter(Boolean)
+          .includes(user.email);
+        if (
+          !admin &&
+          domains.length &&
+          !domains.includes(user.email.split("@").pop())
+        )
+          fail(403, "This email domain does not have access.", "email_domain");
+        const db = env.DB,
+          stmt = (q, ...args) => db.prepare(q).bind(...args),
+          first = (q, ...args) => stmt(q, ...args).first(),
+          all = async (q, ...args) => (await stmt(q, ...args).all()).results;
+        await stmt(
+          "INSERT INTO users(uid,email,display_name) VALUES(?,?,?) ON CONFLICT(uid) DO UPDATE SET email=excluded.email,display_name=excluded.display_name",
+          user.uid,
+          user.email,
+          user.name || "",
+        ).run();
+        if (admin) {
+          await db.batch([
+            stmt(
+              "INSERT OR IGNORE INTO workspaces(id,name) VALUES('tinytrail-internal','TinyTrail internal')",
+            ),
+            stmt(
+              "INSERT OR IGNORE INTO memberships(workspace_id,uid,role) VALUES('tinytrail-internal',?,'owner')",
+              user.uid,
+            ),
+          ]);
+        }
+        const memberships = await all(
+          "SELECT w.*,m.role FROM workspaces w JOIN memberships m ON m.workspace_id=w.id WHERE m.uid=? ORDER BY w.created_at",
+          user.uid,
+        );
+        if (path === "/api/me" && method === "GET")
+          return json({
+            user: { uid: user.uid, email: user.email, name: user.name },
+            platformAdmin: admin,
+            workspaces: memberships,
+            accessRequest: await first(
+              "SELECT * FROM access_requests WHERE uid=?",
+              user.uid,
+            ),
+            legacyCounts: {
+              links: (
+                await first(
+                  "SELECT COUNT(*) AS n FROM links WHERE owner_uid=? AND workspace_id IS NULL AND legacy=0",
+                  user.uid,
+                )
+              ).n,
+              designs: (
+                await first(
+                  "SELECT COUNT(*) AS n FROM qr_designs WHERE owner_uid=? AND workspace_id IS NULL",
+                  user.uid,
+                )
+              ).n,
+            },
+          });
+        if (path === "/api/access-requests" && method === "POST") {
+          const b = await bodyJSON(request),
+            company = text(b.company),
+            website = new URL(text(b.website, 500));
+          if (
+            website.protocol !== "https:" ||
+            website.username ||
+            website.password
+          )
+            fail(400, "Enter a company HTTPS website.");
+          const old = await first(
+            "SELECT * FROM access_requests WHERE uid=?",
+            user.uid,
+          );
+          if (old) return json({ request: old });
+          await stmt(
+            "INSERT INTO access_requests(uid,company,website,use_case) VALUES(?,?,?,?)",
+            user.uid,
+            company,
+            website.href,
+            text(b.useCase, 1000),
+          ).run();
+          return json(
+            {
+              request: await first(
+                "SELECT * FROM access_requests WHERE uid=?",
+                user.uid,
+              ),
+            },
+            201,
+          );
+        }
+        if (path.startsWith("/api/admin/") || path === "/api/legacy") {
+          if (!admin)
+            fail(
+              403,
+              "Platform administrator access is required.",
+              "forbidden",
+            );
+          if (path === "/api/legacy" && method === "GET")
+            return json({
+              links: (
+                await all("SELECT * FROM links WHERE legacy=1 ORDER BY slug")
+              ).map(linkRecord),
+            });
+          if (path === "/api/admin/requests" && method === "GET")
+            return json({
+              requests: await all(
+                "SELECT a.*,u.email FROM access_requests a JOIN users u ON u.uid=a.uid ORDER BY a.created_at DESC",
+              ),
+            });
+          const match = path.match(/^\/api\/admin\/requests\/([^/]+)$/);
+          if (match && method === "POST") {
+            const b = await bodyJSON(request),
+              r = await first(
+                "SELECT * FROM access_requests WHERE uid=?",
+                decodeURIComponent(match[1]),
+              );
+            if (!r) fail(404, "Request not found.");
+            if (r.status !== "pending") return json({ request: r });
+            if (b.action === "decline") {
+              await stmt(
+                "UPDATE access_requests SET status='declined' WHERE uid=? AND status='pending'",
+                r.uid,
+              ).run();
+              return json({ ok: true });
+            }
+            if (b.action !== "approve") fail(400, "Choose approve or decline.");
+            const id = "company-" + r.uid;
+            await db.batch([
+              stmt(
+                "INSERT INTO workspaces(id,name,website) VALUES(?,?,?)",
+                id,
+                r.company,
+                r.website,
+              ),
+              stmt(
+                "INSERT INTO memberships(workspace_id,uid,role) VALUES(?,?,'owner')",
+                id,
+                r.uid,
+              ),
+              stmt(
+                "UPDATE access_requests SET status='approved',workspace_id=? WHERE uid=? AND status='pending'",
+                id,
+                r.uid,
+              ),
+            ]);
+            return json({ workspaceId: id });
+          }
+          fail(404, "Endpoint not found.");
+        }
+        if (path === "/api/invitations/accept" && method === "POST") {
+          const b = await bodyJSON(request),
+            digest = await hash(text(b.token, 200));
+          const invite = await first(
+            "SELECT * FROM invitations WHERE token_hash=?",
+            digest,
+          );
+          if (
+            !invite ||
+            invite.email !== user.email ||
+            invite.expires_at < Date.now() ||
+            invite.accepted_by
+          )
+            fail(
+              403,
+              "This invitation is expired, already used, or belongs to another email.",
+              "invitation",
+            );
+          await db.batch([
+            stmt(
+              "INSERT OR IGNORE INTO memberships(workspace_id,uid,role) SELECT workspace_id,?,'member' FROM invitations WHERE id=? AND accepted_by IS NULL AND expires_at>? AND email=?",
+              user.uid,
+              invite.id,
+              Date.now(),
+              user.email,
+            ),
+            stmt(
+              "UPDATE invitations SET accepted_by=? WHERE id=? AND accepted_by IS NULL AND email=?",
+              user.uid,
+              invite.id,
+              user.email,
+            ),
+          ]);
+          return json({ workspaceId: invite.workspace_id });
+        }
+        const wid = request.headers.get("X-Workspace-Id"),
+          membership = memberships.find((w) => w.id === wid);
+        if (!membership)
+          fail(403, "Select an approved company workspace.", "membership");
+        const owner = () => {
+          if (membership.role !== "owner")
+            fail(403, "Company owner access is required.", "forbidden");
+        };
+        const maxLinks = limit(env.MAX_LINKS_PER_WORKSPACE),
+          maxDesigns = limit(env.MAX_DESIGNS_PER_WORKSPACE);
+        async function saveLink(body, key) {
+          const data = linkInput(body, env, request);
+          if (!uuid(key)) fail(400, "A valid request ID is required.");
+          const prior = await first(
+            "SELECT * FROM links WHERE workspace_id=? AND request_id=?",
+            wid,
+            key,
+          );
+          if (prior) {
+            if (
+              prior.workspace_id !== wid ||
+              prior.slug !== data.slug ||
+              prior.destination !== data.destination
+            )
+              fail(
+                409,
+                "Request ID already used for a different link.",
+                "conflict",
+              );
+            return linkRecord(prior);
+          }
+          let row;
+          try {
+            row = await first(
+              "INSERT INTO links(slug,destination,title,owner_uid,short_url,request_id,workspace_id,updated_by) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM links WHERE workspace_id=?)<? RETURNING *",
+              data.slug,
+              data.destination,
+              data.title,
+              user.uid,
+              `${publicOrigin(env, request)}/r/${data.slug}`,
+              key,
+              wid,
+              user.uid,
+              wid,
+              maxLinks,
+            );
+          } catch (e) {
+            if (String(e).includes("UNIQUE")) {
+              const replay = await first(
+                "SELECT * FROM links WHERE workspace_id=? AND request_id=?",
+                wid,
+                key,
+              );
+              if (
+                replay &&
+                replay.slug === data.slug &&
+                replay.destination === data.destination
+              )
+                return linkRecord(replay);
+              fail(409, "That short name is already in use.", "conflict");
+            }
+            throw e;
+          }
+          if (!row) fail(429, "Company link allowance reached.", "quota");
+          return linkRecord(row);
+        }
+        async function saveDesign(body) {
+          const data = designInput(body);
+          if (!uuid(body.id)) fail(400, "A valid design ID is required.");
+          const prior = await first(
+            "SELECT * FROM qr_designs WHERE id=?",
+            body.id,
+          );
+          if (prior) {
+            if (prior.workspace_id !== wid)
+              fail(404, "Design not found.", "not_found");
+            if (!Number.isInteger(body.version)) {
+              if (
+                prior.title === data.title &&
+                prior.url === data.url &&
+                prior.settings_json === JSON.stringify(data.settings)
+              )
+                return designRecord(prior);
+              fail(409, "Reopen the saved design before editing.", "conflict");
+            }
+            const row = await first(
+              "UPDATE qr_designs SET title=?,url=?,settings_json=?,version=version+1,updated_by=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND workspace_id=? AND version=? RETURNING *",
+              data.title,
+              data.url,
+              JSON.stringify(data.settings),
+              user.uid,
+              body.id,
+              wid,
+              body.version,
+            );
+            if (!row) fail(409, "This design changed. Reopen it.", "conflict");
+            return designRecord(row);
+          }
+          let row;
+          try { row = await first(
+            "INSERT INTO qr_designs(id,owner_uid,title,url,settings_json,workspace_id,updated_by) SELECT ?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM qr_designs WHERE workspace_id=?)<? RETURNING *",
+            body.id,
+            user.uid,
+            data.title,
+            data.url,
+            JSON.stringify(data.settings),
+            wid,
+            user.uid,
+            wid,
+            maxDesigns,
+          ); } catch (error) {
+            if (!String(error).includes("UNIQUE")) throw error;
+            const replay = await first("SELECT * FROM qr_designs WHERE id=? AND workspace_id=?", body.id, wid);
+            if (replay && replay.title === data.title && replay.url === data.url && replay.settings_json === JSON.stringify(data.settings)) return designRecord(replay);
+            fail(409, "This design was saved by another request. Reopen it.", "conflict");
+          }
+          if (!row) fail(429, "Company QR allowance reached.", "quota");
+          return designRecord(row);
+        }
+        if (path === "/api/workspace" && method === "GET")
+          return json({
+            workspace: membership,
+            members: await all(
+              "SELECT m.uid,m.role,u.email FROM memberships m JOIN users u ON u.uid=m.uid WHERE m.workspace_id=?",
+              wid,
+            ),
+            limits: { links: maxLinks, designs: maxDesigns },
+          });
+        if (path === "/api/members" && method === "DELETE") {
+          owner();
+          const b = await bodyJSON(request);
+          const result = await stmt(
+            "DELETE FROM memberships WHERE workspace_id=? AND uid=? AND (role<>'owner' OR (SELECT COUNT(*) FROM memberships WHERE workspace_id=? AND role='owner')>1)",
+            wid,
+            text(b.uid, 128),
+            wid,
+          ).run();
+          if (!result.meta?.changes && !result.changes)
+            fail(
+              409,
+              "Cannot remove the last company owner or an unknown member.",
+            );
+          return json({ ok: true });
+        }
+        if (path === "/api/invitations" && method === "POST") {
+          owner();
+          const b = await bodyJSON(request),
+            inviteEmail = email(b.email);
+          if (
+            (
+              await first(
+                "SELECT COUNT(*) AS n FROM invitations WHERE workspace_id=? AND accepted_by IS NULL AND expires_at>?",
+                wid,
+                Date.now(),
+              )
+            ).n >= 100
+          )
+            fail(429, "Too many outstanding invitations.");
+          const value = crypto.randomUUID() + crypto.randomUUID(),
+            id = crypto.randomUUID();
+          await stmt(
+            "INSERT INTO invitations(id,workspace_id,email,token_hash,expires_at,created_by) VALUES(?,?,?,?,?,?)",
+            id,
+            wid,
+            inviteEmail,
+            await hash(value),
+            Date.now() + 7 * 86400000,
+            user.uid,
+          ).run();
+          return json(
+            {
+              url: `${publicOrigin(env, request)}/manage/#invite=${value}`,
+              expiresInDays: 7,
+            },
+            201,
+          );
+        }
+        if (path === "/api/transfer" && method === "GET")
+          return json({
+            links: (
+              await all(
+                "SELECT * FROM links WHERE owner_uid=? AND workspace_id IS NULL AND legacy=0",
+                user.uid,
+              )
+            ).map(linkRecord),
+            designs: (
+              await all(
+                "SELECT * FROM qr_designs WHERE owner_uid=? AND workspace_id IS NULL",
+                user.uid,
+              )
+            ).map(designRecord),
+          });
+        if (path === "/api/transfer" && method === "POST") {
+          const b = await bodyJSON(request);
+          if (b.confirm !== true)
+            fail(400, "Confirm the shared company transfer.");
+          // Transactional guarded updates prevent concurrent transfers from exceeding allowances.
+          const guard = `(SELECT COUNT(*) FROM links WHERE workspace_id=?) + (SELECT COUNT(*) FROM links WHERE owner_uid=? AND workspace_id IS NULL AND legacy=0)<=? AND (SELECT COUNT(*) FROM qr_designs WHERE workspace_id=?) + (SELECT COUNT(*) FROM qr_designs WHERE owner_uid=? AND workspace_id IS NULL)<=?`;
+          const results = await db.batch([
+            stmt(
+              `UPDATE links SET workspace_id=?,updated_by=? WHERE owner_uid=? AND workspace_id IS NULL AND legacy=0 AND ${guard}`,
+              wid,
+              user.uid,
+              user.uid,
+              wid,
+              user.uid,
+              maxLinks,
+              wid,
+              user.uid,
+              maxDesigns,
+            ),
+            stmt(
+              `UPDATE qr_designs SET workspace_id=?,updated_by=? WHERE owner_uid=? AND workspace_id IS NULL AND ${guard}`,
+              wid,
+              user.uid,
+              user.uid,
+              wid,
+              user.uid,
+              maxLinks,
+              wid,
+              user.uid,
+              maxDesigns,
+            ),
+          ]);
+          const remaining = (
+            await first(
+              "SELECT (SELECT COUNT(*) FROM links WHERE owner_uid=? AND workspace_id IS NULL AND legacy=0)+(SELECT COUNT(*) FROM qr_designs WHERE owner_uid=? AND workspace_id IS NULL) AS n",
+              user.uid,
+              user.uid,
+            )
+          ).n;
+          if (remaining)
+            fail(
+              429,
+              "Transfer exceeds your company allowance. No remaining records were transferred.",
+              "quota",
+            );
+          return json({ ok: true });
+        }
+        if (path === "/api/availability" && method === "POST") {
+          const b = await bodyJSON(request);
+          if (!Array.isArray(b.slugs) || b.slugs.length > 100)
+            fail(400, "Check up to 100 short names.");
+          const names = b.slugs.filter(
+            (s) => typeof s === "string" && s.length <= 64,
+          );
+          return json({
+            unavailable: (
+              await all(
+                "SELECT slug FROM links WHERE slug IN (SELECT value FROM json_each(?))",
+                JSON.stringify(names),
+              )
+            ).map((r) => r.slug),
+          });
+        }
+        if (path === "/api/links" && method === "GET")
+          return json({
+            links: (
+              await all(
+                "SELECT * FROM links WHERE workspace_id=? ORDER BY created_at DESC LIMIT 1000",
+                wid,
+              )
+            ).map(linkRecord),
+          });
+        if (path === "/api/links" && method === "POST")
+          return json(
+            {
+              link: await saveLink(
+                await bodyJSON(request),
+                request.headers.get("Idempotency-Key"),
+              ),
+            },
+            201,
+          );
+        const lm = path.match(/^\/api\/links\/([a-z0-9-]+)$/);
+        if (lm && method === "PATCH") {
+          const b = await bodyJSON(request),
+            data = linkInput(
+              { slug: lm[1], destination: b.destination },
+              env,
+              request,
+            );
+          if (!Number.isInteger(b.version))
+            fail(400, "Saved version is required.");
+          const old = await first(
+            "SELECT * FROM links WHERE slug=? AND workspace_id=? AND legacy=0",
+            lm[1],
+            wid,
+          );
+          if (!old) fail(404, "Link not found.", "not_found");
+          const row = await first(
+            "UPDATE links SET destination=?,version=version+1,updated_by=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE slug=? AND workspace_id=? AND version=? RETURNING *",
+            data.destination,
+            user.uid,
+            lm[1],
+            wid,
+            b.version,
+          );
+          if (!row)
+            fail(409, "This link changed. Refresh before editing.", "conflict");
+          return json({ link: linkRecord(row) });
+        }
+        if (path === "/api/designs" && method === "GET")
+          return json({
+            designs: (
+              await all(
+                "SELECT * FROM qr_designs WHERE workspace_id=? ORDER BY updated_at DESC LIMIT 1000",
+                wid,
+              )
+            ).map(designRecord),
+          });
+        if (path === "/api/designs" && method === "POST")
+          return json(
+            { design: await saveDesign(await bodyJSON(request)) },
+            201,
+          );
+        if (path === "/api/presets" && method === "GET")
+          return json({
+            presets: (
+              await all(
+                "SELECT * FROM presets WHERE workspace_id=? ORDER BY name",
+                wid,
+              )
+            ).map((p) => ({
+              id: p.id,
+              name: p.name,
+              settings: JSON.parse(p.settings_json),
+            })),
+          });
+        if (path === "/api/presets" && method === "POST") {
+          const b = await bodyJSON(request),
+            d = designInput({
+              title: text(b.name),
+              url: "https://example.com/",
+              settings: b.settings,
+            });
+          if (
+            (
+              await first(
+                "SELECT COUNT(*) AS n FROM presets WHERE workspace_id=?",
+                wid,
+              )
+            ).n >= 30
+          )
+            fail(429, "Company preset allowance reached.");
+          await stmt(
+            "INSERT INTO presets(id,workspace_id,name,settings_json,created_by) VALUES(?,?,?,?,?)",
+            crypto.randomUUID(),
+            wid,
+            d.title,
+            JSON.stringify(d.settings),
+            user.uid,
+          ).run();
+          return json({ ok: true }, 201);
+        }
+        if (path === "/api/bulk" && method === "GET")
+          return json({
+            jobs: await all(
+              "SELECT * FROM bulk_jobs WHERE workspace_id=? ORDER BY created_at DESC LIMIT 50",
+              wid,
+            ),
+          });
+        if (path === "/api/bulk" && method === "POST") {
+          const b = await bodyJSON(request);
+          if (
+            !uuid(b.id) ||
+            !["links", "qr", "both"].includes(b.mode) ||
+            !Array.isArray(b.rows) ||
+            !b.rows.length ||
+            b.rows.length > 100
+          )
+            fail(400, "Choose 1–100 rows and a supported workflow.");
+          const settings = designInput({
+            title: "Batch",
+            url: "https://example.com/",
+            settings: b.settings,
+          }).settings;
+          const rows = b.rows.map((r, i) => {
+            const input = {
+              title: text(r.title || `QR ${i + 1}`),
+              url: text(r.url, 4096),
+              slug: r.slug || "",
+              key: crypto.randomUUID(),
+              designId: crypto.randomUUID(),
+            };
+            if (b.mode !== "qr")
+              linkInput(
+                { slug: input.slug, destination: input.url },
+                env,
+                request,
+              );
+            if (b.mode !== "links")
+              designInput({
+                title: input.title,
+                url: b.mode === "qr" ? input.url : "https://example.com/",
+                settings,
+              });
+            return input;
+          });
+          const existing = await first(
+            "SELECT * FROM bulk_jobs WHERE id=?",
+            b.id,
+          );
+          if (existing) {
+            if (existing.workspace_id !== wid) fail(404, "Job not found.");
+            return json({ id: b.id });
+          }
+          if (
+            (
+              await first(
+                "SELECT COUNT(*) AS n FROM bulk_jobs WHERE workspace_id=?",
+                wid,
+              )
+            ).n >= 200
+          )
+            fail(429, "Company batch allowance reached.");
+          await db.batch([
+            stmt(
+              "INSERT INTO bulk_jobs(id,workspace_id,created_by,mode,settings_json) VALUES(?,?,?,?,?)",
+              b.id,
+              wid,
+              user.uid,
+              b.mode,
+              JSON.stringify(settings),
+            ),
+            stmt(
+              "INSERT INTO bulk_rows(job_id,row_index,input_json) SELECT ?,CAST(key AS INTEGER),value FROM json_each(?)",
+              b.id,
+              JSON.stringify(rows),
+            ),
+          ]);
+          return json({ id: b.id }, 201);
+        }
+        const bm = path.match(/^\/api\/bulk\/([0-9a-f-]+)(\/run)?$/);
+        if (bm) {
+          const job = await first(
+            "SELECT * FROM bulk_jobs WHERE id=? AND workspace_id=?",
+            bm[1],
+            wid,
+          );
+          if (!job) fail(404, "Job not found.", "not_found");
+          if (method === "POST" && bm[2]) {
+            const b = await bodyJSON(request);
+            if (b.retry)
+              await stmt(
+                "UPDATE bulk_rows SET error=NULL WHERE job_id=? AND result_json IS NULL",
+                job.id,
+              ).run();
+            const rows = await all(
+              "SELECT * FROM bulk_rows WHERE job_id=? AND result_json IS NULL AND error IS NULL ORDER BY row_index LIMIT 5",
+              job.id,
+            );
+            for (const row of rows) {
+              const input = JSON.parse(row.input_json);
+              try {
+                let link = null,
+                  design = null;
+                if (job.mode !== "qr")
+                  link = await saveLink(
+                    { slug: input.slug, destination: input.url },
+                    input.key,
+                  );
+                if (job.mode !== "links")
+                  design = await saveDesign({
+                    id: input.designId,
+                    title: input.title,
+                    url: link?.shortUrl || input.url,
+                    settings: JSON.parse(job.settings_json),
+                  });
+                await stmt(
+                  "UPDATE bulk_rows SET result_json=?,error=NULL WHERE job_id=? AND row_index=?",
+                  JSON.stringify({
+                    title: input.title,
+                    url: design?.url || link.shortUrl,
+                    link,
+                    design,
+                  }),
+                  job.id,
+                  row.row_index,
+                ).run();
+              } catch (e) {
+                if (!(e instanceof Problem)) throw e;
+                await stmt(
+                  "UPDATE bulk_rows SET error=? WHERE job_id=? AND row_index=? AND result_json IS NULL",
+                  e.message,
+                  job.id,
+                  row.row_index,
+                ).run();
+              }
+            }
+          } else if (method !== "GET" || bm[2])
+            fail(404, "Endpoint not found.");
+          return json({
+            job: {
+              id: job.id,
+              mode: job.mode,
+              settings: JSON.parse(job.settings_json),
+            },
+            rows: (
+              await all(
+                "SELECT * FROM bulk_rows WHERE job_id=? ORDER BY row_index",
+                job.id,
+              )
+            ).map((r) => ({
+              index: r.row_index,
+              input: JSON.parse(r.input_json),
+              result: r.result_json ? JSON.parse(r.result_json) : null,
+              error: r.error,
+            })),
+          });
+        }
+        fail(404, "Endpoint not found.", "not_found");
+      } catch (error) {
+        if (error instanceof Problem)
+          return json({ error: error.message, code: error.code }, error.status);
+        if (error instanceof TypeError)
+          return json(
+            { error: "Check the submitted values.", code: "validation" },
+            400,
+          );
+        return json(
+          {
+            error:
+              "The service could not complete this request. Please try again.",
+            code: "service_error",
+          },
+          503,
+        );
+      }
+    },
+  };
 }
 export default createApp();

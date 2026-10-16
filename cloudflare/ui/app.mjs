@@ -1,213 +1,664 @@
-import { validateSlug, titleFor } from './core.mjs';
-import { initializeAuth, account, onAccountChange, signIn, signUp, signOut, sendVerification, resetPassword, token } from './auth.mjs';
-
-const $=id=>document.getElementById(id);
-let config={authReady:false,publicOrigin:location.origin};
-let ownLinks=[],legacy=[],designs=[],view='legacy',verified=false,editing=null,registering=false,busy=false,loading=false,profileVersion=0,toastTimer;
-let createKey=null;
-function el(tag,cls,text){const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;}
-function notify(text){$('toast').textContent=text;$('toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),4000);}
-function errorAt(id,message){$(id).textContent=message;$(id).classList.toggle('hidden',!message);}
-async function api(path,{method='GET',body,auth=true,requestId}={}){
-  if(!path.startsWith('/api/'))throw new Error('Unsupported request.');
-  const headers={Accept:'application/json'};const uid=account()?.uid;
-  if(auth)headers.Authorization=`Bearer ${await token()}`;
-  if(body)headers['Content-Type']='application/json';
-  if(requestId)headers['Idempotency-Key']=requestId;
+import { validateSlug } from "./core.mjs";
+import {
+  initializeAuth,
+  account,
+  onAccountChange,
+  signIn,
+  signUp,
+  signOut,
+  sendVerification,
+  resetPassword,
+  token,
+} from "./auth.mjs";
+const $ = (id) => document.getElementById(id);
+export const node = (tag, cls = "", value = "") =>
+  Object.assign(document.createElement(tag), {
+    className: cls,
+    textContent: value,
+  });
+let config,
+  me = null,
+  workspace = null,
+  links = [],
+  designs = [],
+  presets = [],
+  editing = null,
+  view = "links",
+  epoch = 0,
+  register = false,
+  busy = false,
+  createKey = null,
+  bulk = null;
+export function message(value) {
+  $("toast").textContent = value;
+  $("toast").classList.remove("hidden");
+  clearTimeout(message.timer);
+  message.timer = setTimeout(() => $("toast").classList.add("hidden"), 4500);
+}
+function error(value = "") {
+  $("app-error").textContent = value;
+  $("app-error").classList.toggle("hidden", !value);
+}
+export async function api(
+  path,
+  { method = "GET", body, auth = true, key } = {},
+) {
+  const uid = account()?.uid,
+    wid = workspace?.id,
+    headers = { Accept: "application/json" };
+  if (auth) headers.Authorization = `Bearer ${await token()}`;
+  if (wid) headers["X-Workspace-Id"] = wid;
+  if (body) headers["Content-Type"] = "application/json";
+  if (key) headers["Idempotency-Key"] = key;
   let response;
-  try{response=await fetch(path,{method,headers,body:body?JSON.stringify(body):undefined,cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(20000)});}
-  catch{throw new Error(method==='GET'?'Could not load your library. Check your connection.':'The save was not confirmed. Refresh your profile before trying again.');}
-  const data=await response.json();
-  if(auth&&uid!==account()?.uid)throw new Error('The account changed. Please try again.');
-  if(!response.ok){const error=new Error(data.error||'The request could not be completed.');error.code=data.code;throw error;}
+  try {
+    response = await fetch(path, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: "omit",
+      cache: "no-store",
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch {
+    throw Error(
+      "Connection interrupted. Refresh or resume to confirm saved results.",
+    );
+  }
+  const data = await response.json();
+  if (auth && (uid !== account()?.uid || wid !== workspace?.id))
+    throw Error("The account or company changed. Reopen this view.");
+  if (!response.ok) {
+    const e = Error(data.error || "The request failed.");
+    e.code = data.code;
+    if (e.code === "membership") {
+      workspace = null;
+      clearLibrary();
+      ui();
+    }
+    throw e;
+  }
   return data;
 }
-function openAccount(){
-  if(!config.authReady){notify('Email accounts are not activated on this deployment yet.');return;}
-  accountUI();if(!$('account-dialog').open)$('account-dialog').showModal();
-}
-function accountUI(){
-  const user=account();
-  $('connection-label').textContent=user?user.email:'Sign in with email';
-  $('connection-label').classList.add('profile-name');$('connect').classList.toggle('connected',verified);
-  $('account-top').textContent=user?'My account ↗':'Sign in with email ↗';
-  $('auth-signedin').classList.toggle('hidden',!user);$('auth-signedout').classList.toggle('hidden',!!user);
-  $('auth-current-email').textContent=user?.email||'';
-  $('auth-verified-note').textContent=verified?'Your email is verified. Your links and QR designs are saved to this profile.':'Check your inbox and verify your email, then select “I’ve verified my email”.';
-  if(verified)errorAt('auth-message','');
-  $('auth-check').classList.toggle('hidden',verified);$('auth-resend').classList.toggle('hidden',verified);
-  $('profile-notice').classList.toggle('hidden',verified);
-  $('profile-message').textContent=user?'Verify your email to create links and save QR designs.':'Sign in with your email to create links and save QR designs.';
-  $('profile-signin').textContent=user?'Verify email':'Sign in';
-  $('form-note').textContent=verified?'Saved to your profile. Ready immediately, with no publishing wait.':'Sign in with a verified email to create links.';
-}
-function count(){return view==='designs'?designs.length:view==='legacy'?legacy.length:ownLinks.length;}
-function render(){
-  const query=$('search').value.trim().toLowerCase();
-  for(const [id,name]of[['tab-links','links'],['tab-designs','designs'],['tab-legacy','legacy']]){
-    $(id).classList.toggle('active',view===name);$(id).setAttribute('aria-pressed',String(view===name));
-  }
-  const heading=view==='designs'?'Saved QR designs':view==='legacy'?'Original links':'My links';
-  $('library-heading').replaceChildren(document.createTextNode(heading+' '),el('span','',''+count()));
-  $('total').textContent=ownLinks.length;$('nav-count').textContent=ownLinks.length;
-  $('links').replaceChildren();
-  $('export').classList.toggle('hidden',view==='designs');
-  const items=(view==='designs'?designs:view==='legacy'?legacy:ownLinks).filter(item=>`${item.title} ${item.slug||''} ${item.url}`.toLowerCase().includes(query));
-  $('empty').classList.toggle('hidden',!!items.length);
-  $('empty').querySelector('h3').textContent=query?'No matching items':view==='designs'?'Your QR designs will appear here':view==='links'?'A fresh start for your links':'No original links available';
-  $('empty').querySelector('p').textContent=query?'Try a different name or destination.':!verified?'Sign in with a verified email to use your personal library.':view==='designs'?'Open the QR builder and choose “Save to my profile”.':'Create your first short link using the form.';
-  for(const [index,item]of items.entries()){
-    if(view==='designs'){
-      const row=el('article','design-row'),body=el('div');body.append(el('h3','',item.title),el('p','',item.url));
-      const button=el('button','button secondary compact','Open designer');button.addEventListener('click',()=>openQR(item.url,item));row.append(body,button);$('links').append(row);continue;
+export function act(fn) {
+  return async (event) => {
+    error();
+    const button = event?.currentTarget;
+    if (button?.tagName === "BUTTON") button.disabled = true;
+    try {
+      await fn(event);
+    } catch (e) {
+      error(e.message);
+    } finally {
+      if (button?.isConnected)
+        button.disabled = button.dataset.locked === "true";
     }
-    const row=el('article','link-row'),body=el('div','link-body'),heading=el('h3','',item.title);
-    if(item.legacy)heading.append(el('span','legacy-badge','ORIGINAL · READ ONLY'));
-    const short=el('a','short-link',item.shortUrl.replace(/^https?:\/\//,''));short.href=item.shortUrl;short.target='_blank';short.rel='noopener noreferrer';
-    const destination=el('a','destination',`→ ${item.url}`);destination.href=item.url;destination.target='_blank';destination.rel='noopener noreferrer';destination.title=item.url;
-    body.append(heading,short,destination);
-    const actions=el('div','row-actions');
-    for(const [label,handler]of[['QR',()=>openQR(item.shortUrl)],['Copy',()=>copy(item.shortUrl)]]){
-      const button=el('button',label==='QR'?'qr-button':'',label);button.setAttribute('aria-label',`${label} ${item.title}`);button.addEventListener('click',handler);actions.append(button);
+  };
+}
+function clearLibrary() {
+  links = [];
+  designs = [];
+  presets = [];
+  editing = null;
+  createKey = null;
+  $("link-form").reset();
+  $("slug").disabled = false;
+  $("form-heading").textContent = "Make it a short link.";
+  $("submit").textContent = "Create short link";
+  $("cancel-edit").classList.add("hidden");
+  $("result").classList.add("hidden");
+  $("links").replaceChildren();
+  $("designs").replaceChildren();
+  $("members").replaceChildren();
+  $("presets").replaceChildren();
+  $("admin-requests").replaceChildren();
+  $("admin-legacy").replaceChildren();
+  $("invite-url").value = "";
+  $("invite-url").classList.add("hidden");
+  $("invite-copy").classList.add("hidden");
+  $("invite-result").textContent = "";
+  $("transfer-items").replaceChildren();
+  $("transfer-confirm").checked = false;
+  $("qr-dialog")?.close();
+  for (const id of ["qr-url", "qr-design-title", "qr-preset-name"])
+    if ($(id)) $(id).value = "";
+  for (const id of [
+    "qr-preview",
+    "qr-preview-url",
+    "qr-preset-select",
+    "qr-saved",
+  ])
+    $(id)?.replaceChildren();
+  bulk?.reset();
+}
+function ui() {
+  const user = account();
+  $("connect").textContent = user?.email || "Sign in with email";
+  $("account-top").textContent = user ? "My account" : "Sign in";
+  $("auth-signedin").classList.toggle("hidden", !user);
+  $("auth-signedout").classList.toggle("hidden", !!user);
+  $("auth-current-email").textContent = user?.email || "";
+  $("auth-verified-note").textContent = me
+    ? "Email verified. Company access is managed by your workspace owner."
+    : "Verify your email, then refresh verification to continue.";
+  $("auth-check").classList.toggle("hidden", !!me);
+  $("auth-resend").classList.toggle("hidden", !!me);
+  $("access-refresh").classList.toggle("hidden", !me || !!workspace);
+  $("member-content").classList.toggle("hidden", !workspace);
+  $("admin-nav").classList.toggle("hidden", !me?.platformAdmin);
+  $("access-panel").classList.toggle(
+    "hidden",
+    !!workspace || !!me?.accessRequest,
+  );
+  $("access-form").classList.toggle("hidden", !me);
+  $("access-status").textContent = me?.accessRequest
+    ? `Your request is ${me.accessRequest.status}.`
+    : "";
+  $("notice").textContent = !user
+    ? "Sign in with a verified email to request company access."
+    : !me
+      ? "Verify your email to continue."
+      : !workspace
+        ? me.accessRequest
+          ? `Company access: ${me.accessRequest.status}. Refresh after your administrator approves the request.`
+          : "Request a company workspace, or accept an invitation from your owner."
+        : "";
+  $("workspace-label").textContent = workspace?.name || "Company workspace";
+  $("open-qr").disabled = !workspace;
+  $("transfer-panel").classList.toggle(
+    "hidden",
+    !workspace ||
+      !((me?.legacyCounts.links || 0) + (me?.legacyCounts.designs || 0)),
+  );
+  $("transfer-summary").textContent =
+    `${me?.legacyCounts.links || 0} previous links and ${me?.legacyCounts.designs || 0} previous QR designs are available to transfer into ${workspace?.name || "your company"}.`;
+  $("preview").textContent = editing
+    ? editing.shortUrl
+    : `${config?.publicOrigin || location.origin}/r/${$("slug").value || "your-name"}`;
+  for (const name of ["links", "designs", "bulk", "team", "admin"])
+    $("view-" + name).classList.toggle(
+      "hidden",
+      view !== name || (name === "admin" ? !me?.platformAdmin : !workspace),
+    );
+  document.querySelectorAll("[data-view]").forEach((b) => {
+    b.classList.toggle("active", b.dataset.view === view);
+    b.setAttribute("aria-current", b.dataset.view === view ? "page" : "false");
+  });
+}
+function render() {
+  const query = $("search").value.toLowerCase();
+  $("links").replaceChildren();
+  $("list-count").textContent = links.length;
+  $("empty").classList.toggle("hidden", !!links.length);
+  for (const link of links.filter((l) =>
+    `${l.title} ${l.url} ${l.slug}`.toLowerCase().includes(query),
+  )) {
+    const row = node("article", "link-row"),
+      body = node("div", "link-body"),
+      a = node("a", "short-link", link.shortUrl.replace(/^https?:\/\//, ""));
+    a.href = link.shortUrl;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    body.append(
+      node("h3", "", link.title),
+      a,
+      node("span", "destination", link.url),
+    );
+    const actions = node("div", "row-actions");
+    for (const [label, fn] of [
+      ["QR", () => openQR(link.shortUrl)],
+      [
+        "Copy",
+        () =>
+          navigator.clipboard
+            .writeText(link.shortUrl)
+            .then(() => message("Link copied.")),
+      ],
+      [
+        "Edit",
+        () => {
+          editing = link;
+          $("slug").value = link.slug;
+          $("slug").disabled = true;
+          $("destination").value = link.url;
+          $("form-heading").textContent = "Update the destination.";
+          $("submit").textContent = "Save destination";
+          $("cancel-edit").classList.remove("hidden");
+          ui();
+          $("destination").focus();
+        },
+      ],
+    ]) {
+      const button = node("button", "", label);
+      button.onclick = act(fn);
+      actions.append(button);
     }
-    if(!item.legacy){const edit=el('button','edit-button','Edit');edit.setAttribute('aria-label',`Edit ${item.title}`);edit.addEventListener('click',()=>editLink(item));actions.append(edit);}
-    row.append(el('span','link-index',String(index+1).padStart(2,'0')),body,actions);$('links').append(row);
+    row.append(node("span", "link-index", "↗"), body, actions);
+    $("links").append(row);
+  }
+  $("designs").replaceChildren();
+  if (!designs.length)
+    $("designs").append(
+      node(
+        "p",
+        "box",
+        "No QR designs yet. Create one from any URL—no saved link needed.",
+      ),
+    );
+  for (const d of designs) {
+    const row = node("article", "design-row"),
+      body = node("div");
+    body.append(node("h3", "", d.title), node("p", "", d.url));
+    const b = node("button", "button secondary", "Open designer");
+    b.onclick = act(() => openQR(d.url, d));
+    row.append(body, b);
+    $("designs").append(row);
   }
 }
-function setView(next){view=next;$('search').value='';render();}
-async function refreshLegacy(){
-  try{const data=await api('/api/legacy',{auth:false});legacy=data.links;}
-  catch{
-    try{const response=await fetch('./links.json');const data=await response.json();legacy=data.map(l=>({...l,legacy:true,shortUrl:`https://ksrtlink.github.io/atk/${l.slug}/`}));}
-    catch{legacy=[];}
+async function load() {
+  const ticket = ++epoch;
+  error();
+  clearLibrary();
+  me = null;
+  workspace = null;
+  ui();
+  if (!account()) return;
+  try {
+    const result = await api("/api/me");
+    if (ticket !== epoch) return;
+    me = result;
+    const invite = new URLSearchParams(location.hash.slice(1)).get("invite");
+    if (invite) {
+      await api("/api/invitations/accept", {
+        method: "POST",
+        body: { token: invite },
+      });
+      history.replaceState(null, "", location.pathname);
+      me = await api("/api/me");
+      message("Invitation accepted. Welcome to your company.");
+    }
+    $("workspace-select").replaceChildren();
+    for (const w of me.workspaces)
+      $("workspace-select").append(new Option(w.name, w.id));
+    if (!me.workspaces.length)
+      $("workspace-select").append(new Option("No approved company", ""));
+    workspace =
+      me.workspaces.find(
+        (w) => w.id === sessionStorage.getItem("tinytrail.workspace"),
+      ) ||
+      me.workspaces[0] ||
+      null;
+    if (workspace) $("workspace-select").value = workspace.id;
+    ui();
+    if (workspace) await refreshLibrary();
+  } catch (e) {
+    if (ticket !== epoch) return;
+    error(e.message);
+    ui();
   }
 }
-async function loadProfile(){
-  const ticket=++profileVersion;
-  verified=false;ownLinks=[];designs=[];accountUI();render();
-  if(!account())return;
-  $('source-status').textContent='Opening your profile…';
-  try{
-    await api('/api/me');
-    const [linkData,qrData]=await Promise.all([api('/api/links'),api('/api/designs')]);
-    if(ticket!==profileVersion)return;
-    ownLinks=linkData.links;designs=qrData.designs;verified=true;
-    $('source-status').classList.remove('warning');$('source-status').textContent='Saved to your profile · Private to your account';
-  }catch(error){
-    if(ticket!==profileVersion)return;
-    $('source-status').textContent=error.message;$('source-status').classList.add('warning');
-    if(error.code==='email_unverified')errorAt('auth-message','Verification is required. Check your inbox, then refresh your verification below.');
-    else errorAt('auth-error',error.message);
+async function refreshLibrary() {
+  if (!workspace) return;
+  const ticket = epoch;
+  const [a, b, c] = await Promise.all([
+    api("/api/links"),
+    api("/api/designs"),
+    api("/api/presets"),
+  ]);
+  if (ticket !== epoch) return;
+  links = a.links;
+  designs = b.designs;
+  presets = c.presets;
+  render();
+  const info = await api("/api/workspace");
+  $("allowance").textContent =
+    `${links.length} / ${info.limits.links} company links · ${designs.length} / ${info.limits.designs} saved QR designs`;
+  await renderTeam(info);
+  if (bulk) await bulk.refresh();
+}
+async function renderTeam(info) {
+  $("members").replaceChildren();
+  for (const member of info.members) {
+    const row = node("div", "list-item"),
+      body = node("div", "", member.email);
+    body.append(node("small", "", member.role));
+    row.append(body);
+    if (workspace.role === "owner" && member.uid !== account().uid) {
+      const b = node("button", "button secondary", "Remove");
+      b.onclick = act(async () => {
+        await api("/api/members", {
+          method: "DELETE",
+          body: { uid: member.uid },
+        });
+        await refreshLibrary();
+      });
+      row.append(b);
+    }
+    $("members").append(row);
   }
-  accountUI();render();
+  $("invite-form").classList.toggle("hidden", workspace.role !== "owner");
+  $("presets").replaceChildren();
+  for (const p of presets)
+    $("presets").append(node("div", "list-item", p.name));
+  if (!presets.length) $("presets").textContent = "No company presets yet.";
 }
-async function refresh(){
-  if(loading||busy)return;loading=true;$('refresh').disabled=true;
-  try{await refreshLegacy();if(account())await loadProfile();else{$('source-status').textContent='Original links are available. Sign in for your personal library.';render();}}
-  finally{loading=false;$('refresh').disabled=false;}
+async function openQR(url = "", design = null) {
+  if (!workspace)
+    throw Error("Join an approved company before creating QR codes.");
+  const { openQRBuilder } = await import("./qr-builder.mjs");
+  const wid = workspace.id,
+    uid = account().uid;
+  let saved = {
+    id: design?.id || crypto.randomUUID(),
+    version: design?.version,
+  };
+  await openQRBuilder({
+    url,
+    links,
+    design,
+    onSave: async (value) => {
+      if (wid !== workspace?.id || uid !== account()?.uid)
+        throw Error("The company changed. Reopen the designer.");
+      const r = await api("/api/designs", {
+        method: "POST",
+        body: { ...value, ...saved },
+      });
+      saved = { id: r.design.id, version: r.design.version };
+      await refreshLibrary();
+    },
+    presets,
+    onPreset: async (value) => {
+      await api("/api/presets", { method: "POST", body: value });
+      await refreshLibrary();
+    },
+  });
 }
-function updatePreview(){
-  $('preview').textContent=editing?editing.shortUrl:`${config.publicOrigin}/r/${$('slug').value||'your-name'}`;
+function openAccount() {
+  if (!config?.authReady)
+    throw Error("Email accounts are temporarily unavailable.");
+  ui();
+  $("account-dialog").showModal();
 }
-function editLink(link){
-  if(busy)return;editing=link;createKey=null;$('slug').value=link.slug;$('slug').disabled=true;$('destination').value=link.url;
-  $('form-heading').textContent='A new destination.';$('form-description').textContent='Keep your short link and QR codes. Update where they lead.';
-  $('submit').textContent='Save destination ↗';$('cancel-edit').classList.remove('hidden');errorAt('form-error','');updatePreview();$('destination').focus();
+async function adminView() {
+  if (!me?.platformAdmin) return;
+  const [r, l] = await Promise.all([
+    api("/api/admin/requests"),
+    api("/api/legacy"),
+  ]);
+  $("admin-requests").replaceChildren();
+  if (!r.requests.length) $("admin-requests").textContent = "No requests yet.";
+  for (const item of r.requests) {
+    const row = node("div", "list-item"),
+      body = node("div", "", item.company);
+    body.append(
+      node("small", "", `${item.email} · ${item.status}`),
+      node("p", "", item.use_case),
+      node("small", "", item.website),
+    );
+    row.append(body);
+    if (item.status === "pending") {
+      const actions = node("div", "action-row");
+      for (const action of ["approve", "decline"]) {
+        const b = node(
+          "button",
+          "button secondary",
+          action === "approve" ? "Approve company" : "Decline",
+        );
+        b.onclick = act(async () => {
+          await api("/api/admin/requests/" + encodeURIComponent(item.uid), {
+            method: "POST",
+            body: { action },
+          });
+          await adminView();
+        });
+        actions.append(b);
+      }
+      row.append(actions);
+    }
+    $("admin-requests").append(row);
+  }
+  $("admin-legacy").replaceChildren();
+  for (const link of l.links) {
+    const row = node("div", "list-item"),
+      body = node("div", "", link.title),
+      a = node("a", "", link.shortUrl);
+    a.href = link.shortUrl;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    body.append(node("small", "", link.url), a);
+    const b = node("button", "button secondary", "QR");
+    b.onclick = act(() => openQR(link.shortUrl));
+    row.append(body, b);
+    $("admin-legacy").append(row);
+  }
 }
-function resetForm(){
-  if(busy)return;editing=null;createKey=null;$('link-form').reset();$('slug').disabled=false;
-  $('form-heading').textContent='Make it a short link.';$('form-description').textContent='Paste a destination. Give it a name. It’s ready to share.';
-  $('submit').textContent='Create short link ↗';$('cancel-edit').classList.add('hidden');errorAt('form-error','');updatePreview();
+async function setView(next) {
+  view = next;
+  ui();
+  if (next === "admin") await adminView();
+  if (next === "bulk" && workspace) {
+    if (!bulk) {
+      const { mountBulk } = await import("./bulk.mjs");
+      bulk = await mountBulk({
+        api,
+        act,
+        message,
+        getState: () => ({ workspace, links, designs, presets }),
+        onChange: refreshLibrary,
+      });
+    }
+    await bulk.refresh();
+  }
 }
-$('link-form').addEventListener('submit',async event=>{
-  event.preventDefault();if(busy)return;errorAt('form-error','');
-  if(!verified){openAccount();return;}
-  let slug,destination;
-  try{slug=validateSlug($('slug').value);const parsed=new URL($('destination').value.trim());if(!['https:','http:'].includes(parsed.protocol)||parsed.username||parsed.password)throw new Error();destination=parsed.href;}
-  catch{errorAt('form-error','Enter a valid short name and a full HTTP or HTTPS destination.');return;}
-  busy=true;$('submit').disabled=true;$('destination').disabled=true;$('slug').disabled=true;
-  const wasEditing=!!editing;
-  try{
-    let response;
-    if(editing){response=await api(`/api/links/${encodeURIComponent(slug)}`,{method:'PATCH',body:{destination,version:editing.version}});}
-    else{createKey ||= crypto.randomUUID();response=await api('/api/links',{method:'POST',body:{slug,destination},requestId:createKey});}
-    const link=response.link;ownLinks=[link,...ownLinks.filter(l=>l.slug!==link.slug)];
-    $('result-link').textContent=link.shortUrl;$('result-link').href=link.shortUrl;
-    $('result-heading').textContent=wasEditing?'Your destination is updated.':'Ready to share.';
-    $('publish-status').textContent='Saved to your profile. The redirect is active immediately.';
-    $('result').classList.remove('hidden');$('check-publish').dataset.url=link.shortUrl;$('check-publish').textContent='Open link ↗';
-    busy=false;resetForm();setView('links');notify(wasEditing?'Destination updated. Your QR codes keep working.':'Short link created and saved.');
-  }catch(error){errorAt('form-error',error.message);}
-  finally{busy=false;$('submit').disabled=false;$('destination').disabled=false;$('slug').disabled=!!editing;$('submit').textContent=editing?'Save destination ↗':'Create short link ↗';}
+for (const b of document.querySelectorAll("[data-view]"))
+  b.onclick = act(() => setView(b.dataset.view));
+for (const id of ["connect", "account-top"]) $(id).onclick = act(openAccount);
+$("auth-close").onclick = () => $("account-dialog").close();
+$("auth-signout").onclick = () => {
+  signOut();
+  $("account-dialog").close();
+};
+onAccountChange(() => {
+  epoch++;
+  me = null;
+  workspace = null;
+  clearLibrary();
+  $("workspace-select").replaceChildren(new Option("No company selected", ""));
+  $("view-admin").classList.add("hidden");
+  ui();
 });
-async function copy(text){try{await navigator.clipboard.writeText(text);notify('Link copied.');}catch{notify('Select and copy the displayed link.');}}
-async function openQR(url='',design=null){
-  try{
-    const {openQRBuilder}=await import('./qr-builder.mjs');
-    const owner=account()?.uid;
-    let saved={id:design?.id||crypto.randomUUID(),version:design?.version};
-    const onSave=verified?async value=>{
-      if(owner!==account()?.uid)throw new Error('Your account changed. Reopen the designer.');
-      const response=await api('/api/designs',{method:'POST',body:{...value,...saved}});
-      saved={id:response.design.id,version:response.design.version};
-      designs=[response.design,...designs.filter(d=>d.id!==saved.id)];render();
-    }:null;
-    await openQRBuilder({url,links:[...ownLinks,...legacy],design,onSave});
-    if(!verified)notify('QR downloads are available. Sign in to save a design to your profile.');
-  }catch(error){notify(error.message||'The QR builder could not load.');}
+for (const [id, value] of [
+  ["auth-login-tab", false],
+  ["auth-register-tab", true],
+])
+  $(id).onclick = () => {
+    register = value;
+    $("auth-submit").textContent = value ? "Create account" : "Sign in";
+    $("auth-login-tab").classList.toggle("active", !value);
+    $("auth-register-tab").classList.toggle("active", value);
+  };
+$("auth-form").onsubmit = act(async (e) => {
+  e.preventDefault();
+  const password = $("auth-password").value;
+  $("auth-password").value = "";
+  $("auth-submit").disabled = true;
+  try {
+    await (register ? signUp : signIn)($("auth-email").value.trim(), password);
+    if (register) {
+      $("auth-message").textContent =
+        "Check your inbox for the verification email.";
+      $("auth-message").classList.remove("hidden");
+    }
+    await load();
+    if (me) $("account-dialog").close();
+  } catch (e) {
+    $("auth-error").textContent = e.message;
+    $("auth-error").classList.remove("hidden");
+  } finally {
+    $("auth-submit").disabled = false;
+  }
+});
+$("auth-check").onclick = act(async () => {
+  await token(true);
+  await load();
+  if (me) $("account-dialog").close();
+});
+$("auth-resend").onclick = act(async () => {
+  await sendVerification();
+  message("Verification email sent.");
+});
+$("auth-reset").onclick = act(async () => {
+  await resetPassword($("auth-email").value.trim());
+  message("If this account exists, a reset email is on its way.");
+});
+$("workspace-select").onchange = act(async () => {
+  epoch++;
+  workspace =
+    me.workspaces.find((w) => w.id === $("workspace-select").value) || null;
+  sessionStorage.setItem("tinytrail.workspace", workspace?.id || "");
+  clearLibrary();
+  ui();
+  await refreshLibrary();
+  if (view === "admin") await adminView();
+});
+$("access-refresh").onclick = act(load);
+$("access-form").onsubmit = act(async (e) => {
+  e.preventDefault();
+  await api("/api/access-requests", {
+    method: "POST",
+    body: {
+      company: $("company-name").value,
+      website: $("company-website").value,
+      useCase: $("company-use").value,
+    },
+  });
+  await load();
+  message("Request received. Your company is awaiting approval.");
+});
+$("invite-form").onsubmit = act(async (e) => {
+  e.preventDefault();
+  const r = await api("/api/invitations", {
+    method: "POST",
+    body: { email: $("invite-email").value },
+  });
+  $("invite-url").value = r.url;
+  $("invite-url").classList.remove("hidden");
+  $("invite-copy").classList.remove("hidden");
+  $("invite-result").textContent =
+    "Share this link with the invited colleague. It expires in seven days and requires their verified email.";
+});
+$("invite-copy").onclick = act(async () => {
+  await navigator.clipboard.writeText($("invite-url").value);
+  message("Invitation copied.");
+});
+$("transfer-preview").onclick = act(async () => {
+  const r = await api("/api/transfer");
+  $("transfer-items").replaceChildren();
+  for (const item of [...r.links, ...r.designs])
+    $("transfer-items").append(
+      node("p", "", `${item.title} — ${item.shortUrl || item.url}`),
+    );
+  $("transfer-items").classList.remove("hidden");
+});
+$("transfer-submit").onclick = act(async () => {
+  if (!$("transfer-confirm").checked)
+    throw Error(
+      "Confirm that these items will be shared with your selected company.",
+    );
+  await api("/api/transfer", { method: "POST", body: { confirm: true } });
+  await load();
+  message("Previous library transferred. URLs remain unchanged.");
+});
+$("link-form").onsubmit = act(async (e) => {
+  e.preventDefault();
+  if (busy) return;
+  busy = true;
+  $("submit").disabled = true;
+  try {
+    const body = {
+      slug: validateSlug($("slug").value),
+      destination: $("destination").value,
+      ...(editing ? { version: editing.version } : {}),
+    };
+    createKey ||= crypto.randomUUID();
+    const r = await api(editing ? "/api/links/" + editing.slug : "/api/links", {
+      method: editing ? "PATCH" : "POST",
+      body,
+      key: createKey,
+    });
+    $("result-link").textContent = r.link.shortUrl;
+    $("result-link").href = r.link.shortUrl;
+    $("result").classList.remove("hidden");
+    editing = null;
+    createKey = null;
+    $("link-form").reset();
+    $("slug").disabled = false;
+    $("cancel-edit").classList.add("hidden");
+    $("form-heading").textContent = "Make it a short link.";
+    $("submit").textContent = "Create short link";
+    ui();
+    await refreshLibrary();
+    message("Destination saved.");
+  } finally {
+    busy = false;
+    $("submit").disabled = false;
+  }
+});
+$("cancel-edit").onclick = () => {
+  editing = null;
+  createKey = null;
+  $("link-form").reset();
+  $("slug").disabled = false;
+  $("cancel-edit").classList.add("hidden");
+  $("form-heading").textContent = "Make it a short link.";
+  $("submit").textContent = "Create short link";
+  ui();
+};
+for (const id of ["slug", "destination"])
+  $(id).oninput = () => {
+    createKey = null;
+    ui();
+  };
+$("search").oninput = render;
+$("refresh").onclick = act(load);
+for (const id of ["open-qr", "design-new"]) $(id).onclick = act(() => openQR());
+$("result-qr").onclick = act(() => openQR($("result-link").href));
+export function download(name, blob) {
+  const u = URL.createObjectURL(blob),
+    a = node("a");
+  a.href = u;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(u), 30000);
 }
-function authTab(isRegister){registering=isRegister;$('auth-login-tab').classList.toggle('active',!isRegister);$('auth-register-tab').classList.toggle('active',isRegister);$('auth-submit').textContent=isRegister?'Create account ↗':'Sign in ↗';$('auth-password').autocomplete=isRegister?'new-password':'current-password';errorAt('auth-error','');}
-$('auth-form').addEventListener('submit',async event=>{
-  event.preventDefault();$('auth-submit').disabled=true;errorAt('auth-error','');errorAt('auth-message','');
-  const password=$('auth-password').value;$('auth-password').value='';
-  try{
-    if(registering){await signUp($('auth-email').value.trim(),password);errorAt('auth-message','Account created. Check your inbox for the verification email, then choose “I’ve verified my email”.');}
-    else await signIn($('auth-email').value.trim(),password);
-    await loadProfile();
-    if(verified){$('account-dialog').close();setView('links');notify('Welcome. Your profile is ready.');}
-  }catch(error){errorAt('auth-error',error.message);}
-  finally{$('auth-submit').disabled=false;accountUI();}
-});
-$('auth-check').addEventListener('click',async()=>{
-  $('auth-check').disabled=true;errorAt('auth-error','');
-  try{await token(true);await loadProfile();if(verified){errorAt('auth-message','');$('account-dialog').close();setView('links');notify('Email verified. Welcome to your profile.');}}
-  catch(error){errorAt('auth-error',error.message);}finally{$('auth-check').disabled=false;}
-});
-$('auth-resend').addEventListener('click',async()=>{
-  $('auth-resend').disabled=true;
-  try{await sendVerification();errorAt('auth-message','Verification email sent. Check your inbox and spam folder.');}
-  catch(error){errorAt('auth-error',error.message);}finally{setTimeout(()=>$('auth-resend').disabled=false,30000);}
-});
-$('auth-reset').addEventListener('click',async()=>{
-  $('auth-reset').disabled=true;
-  try{await resetPassword($('auth-email').value.trim());errorAt('auth-message','If that email has an account, a password reset email is on its way.');}
-  catch(error){errorAt('auth-error',error.message);}finally{setTimeout(()=>$('auth-reset').disabled=false,10000);}
-});
-$('auth-signout').addEventListener('click',()=>{signOut();$('account-dialog').close();notify('Signed out. Your saved work stays in your profile.');});
-onAccountChange(()=>{
-  profileVersion++;verified=false;ownLinks=[];designs=[];
-  if($('qr-dialog')?.open)$('qr-dialog').close();
-  $('result').classList.add('hidden');busy=false;resetForm();accountUI();render();
-});
-for(const id of ['connect','account-top','profile-signin'])$(id).addEventListener('click',openAccount);
-$('auth-close').addEventListener('click',()=>$('account-dialog').close());
-$('account-dialog').addEventListener('close',()=>{$('auth-password').value='';errorAt('auth-error','');});
-$('auth-login-tab').addEventListener('click',()=>authTab(false));$('auth-register-tab').addEventListener('click',()=>authTab(true));
-for(const [id,next]of[['tab-links','links'],['tab-designs','designs'],['tab-legacy','legacy']])$(id).addEventListener('click',()=>setView(next));
-$('refresh').addEventListener('click',refresh);$('search').addEventListener('input',render);
-$('clear-search').addEventListener('click',()=>{$('search').value='';render();});
-$('slug').addEventListener('input',()=>{createKey=null;updatePreview();});$('destination').addEventListener('input',()=>{createKey=null;});
-$('cancel-edit').addEventListener('click',resetForm);$('nav-create').addEventListener('click',()=>{resetForm();setView('links');$('destination').focus();});
-for(const id of ['nav-qr','open-qr'])$(id).addEventListener('click',()=>openQR());
-$('copy-result').addEventListener('click',()=>copy($('result-link').href));
-$('check-publish').addEventListener('click',()=>{const url=$('check-publish').dataset.url;if(url)window.open(url,'_blank','noopener,noreferrer');});
-$('export').addEventListener('click',()=>{
-  const items=view==='legacy'?legacy:ownLinks;const cell=value=>`"${String(value).replace(/"/g,'""')}"`;
-  const csv=['Name,Short link,Destination',...items.map(l=>[l.title,l.shortUrl,l.url].map(cell).join(','))].join('\r\n');
-  const url=URL.createObjectURL(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}));const a=el('a');a.href=url;a.download='my-links.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-});
-try{config=await api('/api/config',{auth:false});}
-catch{$('source-status').textContent='The account service is unavailable. Original links are available in preview.';}
-$('setup-notice').classList.toggle('hidden',config.authReady);
-updatePreview();await refreshLegacy();await initializeAuth(config);
-if(account()){view='links';await loadProfile();}else{$('source-status').textContent='Original QR links are preserved. Sign in for your personal library.';accountUI();render();}
+export const csvCell = (value) =>
+  '"' +
+  String(value ?? "")
+    .replace(/"/g, '""')
+    .replace(/^[=+@\-\t\r]/, "'$&") +
+  '"';
+$("export").onclick = () =>
+  download(
+    "company-links.csv",
+    new Blob(
+      [
+        "\ufeffTitle,Short link,Destination\r\n" +
+          links
+            .map((l) => [l.title, l.shortUrl, l.url].map(csvCell).join(","))
+            .join("\r\n"),
+      ],
+      { type: "text/csv;charset=utf-8" },
+    ),
+  );
+try {
+  config = await api("/api/config", { auth: false });
+  await initializeAuth(config);
+  await load();
+  if (!account() && new URLSearchParams(location.search).has("request")) {
+    register = true;
+    $("auth-register-tab").click();
+    openAccount();
+  }
+} catch (e) {
+  error(e.message);
+}

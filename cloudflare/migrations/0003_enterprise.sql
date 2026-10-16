@@ -1,0 +1,14 @@
+CREATE TABLE workspaces(id TEXT PRIMARY KEY,name TEXT NOT NULL,website TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE memberships(workspace_id TEXT NOT NULL REFERENCES workspaces(id),uid TEXT NOT NULL REFERENCES users(uid),role TEXT NOT NULL CHECK(role IN ('owner','member')),PRIMARY KEY(workspace_id,uid));
+CREATE INDEX memberships_uid ON memberships(uid);
+ALTER TABLE links ADD COLUMN workspace_id TEXT REFERENCES workspaces(id);
+ALTER TABLE links ADD COLUMN updated_by TEXT;
+ALTER TABLE qr_designs ADD COLUMN workspace_id TEXT REFERENCES workspaces(id);
+ALTER TABLE qr_designs ADD COLUMN updated_by TEXT;
+CREATE INDEX links_workspace ON links(workspace_id,created_at);
+CREATE INDEX designs_workspace ON qr_designs(workspace_id,updated_at);
+CREATE TABLE access_requests(uid TEXT PRIMARY KEY REFERENCES users(uid),company TEXT NOT NULL,website TEXT NOT NULL,use_case TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','declined')),workspace_id TEXT REFERENCES workspaces(id),created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE invitations(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),email TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,expires_at INTEGER NOT NULL,created_by TEXT NOT NULL REFERENCES users(uid),accepted_by TEXT REFERENCES users(uid));
+CREATE TABLE presets(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),name TEXT NOT NULL,settings_json TEXT NOT NULL,created_by TEXT NOT NULL REFERENCES users(uid));
+CREATE TABLE bulk_jobs(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),created_by TEXT NOT NULL REFERENCES users(uid),mode TEXT NOT NULL,settings_json TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE bulk_rows(job_id TEXT NOT NULL REFERENCES bulk_jobs(id),row_index INTEGER NOT NULL,input_json TEXT NOT NULL,result_json TEXT,error TEXT,PRIMARY KEY(job_id,row_index));

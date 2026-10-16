@@ -20,8 +20,9 @@
     "FIREBASE_PROJECT_ID": "",
     "FIREBASE_API_KEY": "",
     "PUBLIC_ORIGIN": "",
+    "ADMIN_EMAILS": "your-verified-admin@example.com",
     "ALLOWED_EMAIL_DOMAINS": "",
-    "MAX_LINKS_PER_USER": "200",
-    "MAX_DESIGNS_PER_USER": "200"
+    "MAX_LINKS_PER_WORKSPACE": "200",
+    "MAX_DESIGNS_PER_WORKSPACE": "200"
   }
 }

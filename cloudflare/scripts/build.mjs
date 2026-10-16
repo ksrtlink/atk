@@ -1,40 +1,160 @@
-import { cp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-const project=new URL('../',import.meta.url),source=new URL('../manage/',project),output=new URL('public/manage/',project);
-await mkdir(output,{recursive:true});
-for(const file of ['styles.css','core.mjs','qr-core.mjs','qr-builder.mjs','qr-builder.css','links.json','vendor'])await cp(new URL(file,source),new URL(file,output),{recursive:true});
-await rm(new URL('kearney-logo.svg',output),{force:true});
-for(const file of ['app.mjs','auth.mjs','accounts.css','tinytrail.css','tinytrail-logo.svg','tinytrail-icon.svg'])await cp(new URL(`ui/${file}`,project),new URL(file,output));
-let html=await readFile(new URL('index.html',source),'utf8');
-html=html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/,'<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\'; style-src \'self\'; connect-src \'self\' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src \'self\' data: blob:; object-src \'none\'; base-uri \'none\'; form-action \'none\'">');
-html=html.replace('<link rel="stylesheet" href="./qr-builder.css">','<link rel="stylesheet" href="./qr-builder.css"><link rel="stylesheet" href="./accounts.css"><link rel="stylesheet" href="./tinytrail.css?v=kumo-1"><link rel="icon" type="image/svg+xml" href="./tinytrail-icon.svg">');
-html=html.replace(/<a class="brand"[\s\S]*?<\/a>/,'<a class="brand" href="./" aria-label="TinyTrail home"><img class="brand-logo" src="./tinytrail-logo.svg" width="170" height="36" alt="TinyTrail"><span class="brand-sub">LINKS &amp; QR</span></a>');
-html=html.replaceAll('Kearney — Link studio','TinyTrail — Short links & QR codes').replace('Create, organize, and share Kearney short links.','Create short links and print-ready QR codes. Your own library, on any device.');
-html=html.replace('Kearney links','TinyTrail workspace').replace('<span class="workspace-monogram">K</span>','<span class="workspace-monogram">T</span>');
-html=html.replace('https://www.kearney.com/…','https://example.com/your-page');
-html=html.replace('<span>Kearney <span class="footer-dot">','<span>TinyTrail <span class="footer-dot">').replace('Link studio</span>','Links &amp; QR</span>');
-html=html.replace('LESS FRICTION. MORE CONNECTION.','SMALL LINKS. BIG POSSIBILITIES.');
-html=html.replace('Connect GitHub','Sign in with email').replace('id="connection-label"','id="connection-label"');
-html=html.replace('ksrtlink / atk','Personal workspace');
-html=html.replace(/<header class="topbar">[\s\S]*?<\/header>/,'<header class="topbar"><span>Workspace <span class="breadcrumb">/</span> <strong>My profile</strong></span><button class="text-button" id="account-top">Sign in with email ↗</button></header>');
-html=html.replace('All your destinations, neatly in one place.','Your links and QR designs, saved to your profile.');
-html=html.replace('<div class="workspace-grid">','<div class="profile-notice" id="profile-notice"><p id="profile-message">Sign in with your email to create links and save QR designs.</p><button class="button secondary compact" id="profile-signin">Sign in</button></div><div class="profile-notice hidden" id="setup-notice"><p>Email accounts are not activated on this deployment yet. The QR builder and original eight links are available for preview.</p></div><div class="workspace-grid">');
-html=html.replace('<div class="toolbar">','<div class="library-tabs" aria-label="Library sections"><button id="tab-links" class="active">My links</button><button id="tab-designs">Saved QR designs</button><button id="tab-legacy">Original 8 links</button></div><div class="toolbar">');
-html=html.replace('Your links <span id="list-count">','My links <span id="list-count">');
-html=html.replace('Loading your link library…','Opening your library…');
-html=html.replace('ksrtlink.github.io/atk/<strong>your-name/</strong>','<strong>your-site/r/your-name</strong>');
-html=html.replace('Connect GitHub to publish. Browsing is open to everyone.','Sign in with a verified email. Your link is ready immediately.');
-html=html.replace('SAVED TO GITHUB','SAVED TO YOUR PROFILE').replace('Your link is on its way.','Your link is ready.').replace('GitHub Pages is publishing your redirect.','Your destination is active.').replace('<a class="commit-link" id="commit-link" target="_blank" rel="noopener noreferrer">View saved change ↗</a>','');
-html=html.replace(/<dialog id="connection-dialog"[\s\S]*?<\/dialog>/,await readFile(new URL('ui/account-dialog.html',project),'utf8'));
-// Adapt shared component labels at build time; the original GitHub deployment keeps its branding.
-const qrPath=new URL('qr-builder.mjs',output);
-let qrSource=await readFile(qrPath,'utf8');
-qrSource=qrSource.replaceAll('Kearney code color presets','TinyTrail code color presets').replaceAll('Use Kearney ${name} code color','Use TinyTrail ${name} code color').replaceAll('Kearney ${name} ·','TinyTrail ${name} ·');
-qrSource=qrSource.replace('button.setAttribute(\'aria-label\',`Use TinyTrail ${name} code color`);', 'const label={slate:"Ink",purple:"Teal",blue:"Blue",pink:"Rose"}[name]; button.setAttribute(\'aria-label\',`Use TinyTrail ${label} code color`);');
-qrSource=qrSource.replace('button.title=`TinyTrail ${name} · ${color}`;','button.title=`TinyTrail ${label} · ${color}`;');
-await writeFile(qrPath,qrSource);
-const corePath=new URL('qr-core.mjs',output);
-await writeFile(corePath,(await readFile(corePath,'utf8')).replace("|| 'kearney'","|| 'tinytrail'"));
-await writeFile(new URL('index.html',output),html);
-await writeFile(new URL('public/_headers',project),'/manage/*\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Referrer-Policy: no-referrer\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n');
-console.log(`Built static assets at ${fileURLToPath(output)}. No credentials or legacy folder copies are included.`);
+import { cp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
+import { build } from "esbuild";
+import { fileURLToPath } from "node:url";
+import QRCode from "qrcode";
+const project = new URL("../", import.meta.url),
+  source = new URL("../manage/", project),
+  output = new URL("public/manage/", project);
+await mkdir(output, { recursive: true });
+for (const file of [
+  "styles.css",
+  "core.mjs",
+  "qr-core.mjs",
+  "qr-builder.mjs",
+  "qr-builder.css",
+  "vendor",
+])
+  await cp(new URL(file, source), new URL(file, output), { recursive: true });
+for (const file of ["kearney-logo.svg", "links.json"])
+  await rm(new URL(file, output), { force: true });
+for (const file of [
+  "app.mjs",
+  "auth.mjs",
+  "accounts.css",
+  "tinytrail.css",
+  "enterprise.css",
+  "tinytrail-logo.svg",
+  "tinytrail-icon.svg",
+  "bulk.mjs",
+])
+  await cp(new URL(`ui/${file}`, project), new URL(file, output));
+let html = await readFile(new URL("ui/index.html", project), "utf8");
+html = html.replace(
+  "<!--ACCOUNT_DIALOG-->",
+  (await readFile(new URL("ui/account-dialog.html", project), "utf8"))
+    .replace("YOUR PERSONAL WORKSPACE", "YOUR COMPANY ACCOUNT")
+    .replace(
+      "One email account for your links and saved QR designs.",
+      "Sign in to your company’s shared link and QR studio.",
+    ),
+);
+await writeFile(new URL("index.html", output), html);
+let qr = await readFile(new URL("qr-builder.mjs", source), "utf8");
+qr = qr
+  .replaceAll("Kearney code color presets", "TinyTrail code color presets")
+  .replaceAll(
+    "Use Kearney ${name} code color",
+    "Use TinyTrail ${name} code color",
+  )
+  .replaceAll("Kearney ${name} ·", "TinyTrail ${name} ·")
+  .replaceAll("Save to my profile", "Save to company")
+  .replace(
+    "No GitHub connection needed.",
+    "Use a company short link or enter a direct website URL.",
+  )
+  .replace("`${BASE}insights/`", "''");
+qr = qr
+  .replace(
+    "button.setAttribute('aria-label',`Use TinyTrail ${name} code color`);",
+    'const label={slate:"Ink",purple:"Teal",blue:"Blue",pink:"Rose"}[name];button.setAttribute(\'aria-label\',`Use TinyTrail ${label} code color`);',
+  )
+  .replace(
+    "button.title=`TinyTrail ${name} · ${color}`;",
+    "button.title=`TinyTrail ${label} · ${color}`;",
+  );
+// Keep the shared legacy application untouched; extend only the company build.
+qr = qr.replace(
+  "let savingProfile = false;",
+  "let savingProfile = false;\nlet presetHandler=null;",
+);
+qr = qr.replace("design=null}={}", "design=null,presets=[],onPreset=null}={}");
+qr = qr.replace(
+  "  saveHandler=onSave;",
+  `  saveHandler=onSave;
+  presetHandler=onPreset;
+  let controls=$('qr-company-presets');
+  if(!controls){controls=document.createElement('div');controls.id='qr-company-presets';controls.className='qr-preset-controls';controls.innerHTML='<label for="qr-preset-select">Company style preset</label><select id="qr-preset-select"><option value="">Choose a preset</option></select><label for="qr-preset-name">Save current style as a company preset</label><input id="qr-preset-name" maxlength="100" placeholder="e.g. Company print style"><button id="qr-preset-save" class="button secondary" type="button">Save company preset</button>';$('.qr-controls');dialog.querySelector('.qr-controls').prepend(controls);}
+  const presetSelect=$('qr-preset-select');presetSelect.replaceChildren(new Option('Choose a preset',''));for(const p of presets)presetSelect.append(new Option(p.name,p.id));
+  presetSelect.onchange=()=>{const p=presets.find(p=>p.id===presetSelect.value);if(!p)return;const c=p.settings;for(const [name,value]of[['qr-dots',c.dots],['qr-border',c.border],['qr-center',c.center]]){const input=[...dialog.querySelectorAll('input[name="'+name+'"]')].find(i=>i.value===value);if(input)input.checked=true;}$('qr-foreground').value=c.foreground;$('qr-background').value=c.background;$('qr-size').value=c.size;schedule();};
+  $('qr-preset-save').onclick=async()=>{try{if(!current||!presetHandler)throw Error('Enter a valid URL and style first.');$('qr-preset-save').disabled=true;await presetHandler({name:$('qr-preset-name').value,settings:current});$('qr-quality').textContent='Company preset saved. Reopen the designer to select it.';}catch(e){$('qr-error').textContent=e.message;$('qr-error').classList.remove('hidden');}finally{$('qr-preset-save').disabled=false;}};
+`,
+);
+qr = qr.replace("$('.qr-controls');", "");
+await writeFile(new URL("qr-builder.mjs", output), qr);
+await writeFile(
+  new URL("qr-core.mjs", output),
+  (await readFile(new URL("qr-core.mjs", source), "utf8")).replace(
+    "|| 'kearney'",
+    "|| 'tinytrail'",
+  ),
+);
+await build({
+  entryPoints: [fileURLToPath(new URL("ui/exports.mjs", project))],
+  outfile: fileURLToPath(new URL("exports.mjs", output)),
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  minify: true,
+  legalComments: "eof",
+});
+let landing = await readFile(new URL("ui/landing.html", project), "utf8");
+landing = landing.replaceAll(
+  "<!--SAMPLE_QR-->",
+  await QRCode.toString("https://example.com/annual-report", {
+    type: "svg",
+    margin: 4,
+    color: { dark: "#18181b", light: "#ffffff" },
+  }),
+);
+await writeFile(new URL("public/index.html", project), landing);
+for (const file of ["landing.css", "landing.mjs"])
+  await cp(new URL("ui/" + file, project), new URL("public/" + file, project));
+await writeFile(
+  new URL("public/_headers", project),
+  "/*\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Referrer-Policy: no-referrer\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n",
+);
+const notices = [];
+for (const name of [
+  "fflate",
+  "jspdf",
+  "svg2pdf.js",
+  "qrcode",
+  "canvg",
+  "html2canvas",
+  "dompurify",
+  "raf",
+  "rgbcolor",
+  "stackblur-canvas",
+  "text-segmentation",
+  "utrie",
+  "pako",
+  "fast-png",
+  "iobuffer",
+  "performance-now",
+]) {
+  const root = new URL("node_modules/" + name + "/", project);
+  const pkg = JSON.parse(
+    await readFile(new URL("package.json", root), "utf8").catch(() => "{}"),
+  );
+  if (!pkg.name) continue;
+  let license = "";
+  for (const file of [
+    "LICENSE",
+    "LICENSE.txt",
+    "LICENSE.md",
+    "license",
+    "license.txt",
+  ]) {
+    try {
+      license = await readFile(new URL(file, root), "utf8");
+      break;
+    } catch {}
+  }
+  notices.push(
+    pkg.name + " " + pkg.version + " (" + pkg.license + ")\n" + license,
+  );
+}
+await writeFile(new URL("EXPORT-LICENSES.txt", output), notices.join("\n\n"));
+console.log(
+  "Built landing page, company studio, and lazy-loaded export tools.",
+);
