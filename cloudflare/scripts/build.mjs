@@ -26,6 +26,7 @@ for (const file of [
   "staff-tools.mjs",
   "staff-distribution.mjs",
   "routing.mjs",
+  "health.mjs",
   "auth.mjs",
   "accounts.css",
   "tinytrail.css",

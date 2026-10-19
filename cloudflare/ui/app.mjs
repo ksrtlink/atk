@@ -15,6 +15,7 @@ const $ = (id) => document.getElementById(id);
 let analyticsView = null;
 let resourcesView = null;
 let peopleView = null;
+let healthSummaries = new Map();
 let creatorHidden = false;
 try { creatorHidden = localStorage.getItem("tinytrail.creator-hidden") === "true"; } catch {}
 export const node = (tag, cls = "", value = "") =>
@@ -107,6 +108,7 @@ export function act(fn) {
   };
 }
 function clearLibrary() {
+  healthSummaries.clear();
   links = [];
   deletedLinks = [];
   $("link-status").value = "active";
@@ -269,7 +271,9 @@ function render() {
       message("Link restored.");
     };
     const deleteLink = () => confirmDelete(link);
-    for (const [label, fn] of (trash ? [["Restore", restoreLink]] : [
+    const monitored=healthSummaries.get(link.slug),healthLabel=!monitored?.enabled?"Health":monitored.stale||monitored.pending?"Health · pending":monitored.broken?"Health · issue":monitored.blocked||monitored.unreachable||monitored.unknown?"Health · review":"Health · OK";
+    const monitorAction=()=>config.features?.linkHealth&&!link.legacy?[[healthLabel,async()=>{const {openHealth}=await import("./health.mjs");await openHealth({link,request:api,onRefresh:refreshLibrary});}]]:[];
+    for (const [label, fn] of (trash ? [["Restore", restoreLink],...monitorAction()] : [
       ["QR", () => openQR(link.shortUrl)],
       [
         "Copy",
@@ -294,6 +298,7 @@ function render() {
           $("destination").focus();
         },
       ],
+      ...monitorAction(),
       ...(!link.legacy ? [["Rules",async()=>{const {openRouting}=await import("./routing.mjs");await openRouting({link,request:api,onSaved:refreshLibrary});}],["Delete", deleteLink]] : []),
     ])) {
       const button = node("button", label === "Delete" ? "danger" : "", label);
@@ -383,16 +388,18 @@ async function resumeCreateDraft() {
 async function refreshLibrary() {
   if (!workspace) return;
   const ticket = epoch;
-  const [a, b, c] = await Promise.all([
+  const [a, b, c, h] = await Promise.all([
     api("/api/links"),
     api("/api/designs"),
     api("/api/presets"),
+    config.features?.linkHealth?api("/api/link-health"):Promise.resolve({monitors:[]}),
   ]);
   if (ticket !== epoch) return;
   links = a.links;
   deletedLinks = a.deletedLinks || [];
   designs = b.designs;
   presets = c.presets;
+  healthSummaries=new Map(h.monitors.map(m=>[m.slug,m]));
   render();
   const info = await api("/api/workspace");
   $("allowance").textContent =

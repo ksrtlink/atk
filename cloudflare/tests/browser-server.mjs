@@ -13,7 +13,7 @@ for (const n of [
   "0001_schema.sql",
   "0002_original_links.sql",
   "0003_enterprise.sql",
-  "0004_analytics.sql", "0005_personal.sql", "0006_link_trash.sql", "0007_resource_pages.sql", "0008_link_routing.sql", "0009_people.sql", "0010_staff_tools.sql", "0011_people_photos.sql",
+  "0004_analytics.sql", "0005_personal.sql", "0006_link_trash.sql", "0007_resource_pages.sql", "0008_link_routing.sql", "0009_people.sql", "0010_staff_tools.sql", "0011_people_photos.sql", "0012_link_health.sql",
 ])
   sql.exec(await readFile(resolve(root, "migrations/" + n), "utf8"));
 let failAnalytics = false;
@@ -101,6 +101,7 @@ const env = {
   ADMIN_EMAILS: "admin@example.com",
   ANALYTICS_ENABLED: "true",
   TRACKED_QR_ENABLED: "true",
+  LINK_HEALTH_ENABLED: "true",
   ANALYTICS_RETENTION_DAYS: "90",
   ASSETS: {
     async fetch(request) {
@@ -132,6 +133,7 @@ const env = {
 };
 const app = createApp((value, settings) =>
   verifyFirebaseToken(value, settings, resolver),
+  {healthCheck:async url=>({state:url.includes("health-missing")?"broken":"healthy",reason:url.includes("health-missing")?"http_missing":"http_ok",httpStatus:url.includes("health-missing")?404:200,redirects:0,elapsedMs:2})},
 );
 createServer(async (req, res) => {
   try {
@@ -146,7 +148,7 @@ createServer(async (req, res) => {
     if (req.url === "/qa/reset" && req.method === "POST") {
       failAnalytics = false;
       sql.exec(
-        "DELETE FROM people_photos; DELETE FROM people_import_rows; DELETE FROM people_events; DELETE FROM people_revisions; DELETE FROM people; DELETE FROM people_imports; DELETE FROM people_templates; DELETE FROM link_routing_revisions; DELETE FROM link_routing; DELETE FROM resource_events; DELETE FROM resource_revisions; DELETE FROM resource_pages; DELETE FROM engagement_events; DELETE FROM analytics_periods; DELETE FROM analytics_settings; DELETE FROM bulk_rows; DELETE FROM bulk_jobs; DELETE FROM presets; DELETE FROM invitations; DELETE FROM access_requests; DELETE FROM memberships; DELETE FROM qr_designs; DELETE FROM tracked_qrs; DELETE FROM links WHERE legacy=0; DELETE FROM workspaces; DELETE FROM users;",
+        "DELETE FROM link_health_targets; DELETE FROM link_health; DELETE FROM people_photos; DELETE FROM people_import_rows; DELETE FROM people_events; DELETE FROM people_revisions; DELETE FROM people; DELETE FROM people_imports; DELETE FROM people_templates; DELETE FROM link_routing_revisions; DELETE FROM link_routing; DELETE FROM resource_events; DELETE FROM resource_revisions; DELETE FROM resource_pages; DELETE FROM engagement_events; DELETE FROM analytics_periods; DELETE FROM analytics_settings; DELETE FROM bulk_rows; DELETE FROM bulk_jobs; DELETE FROM presets; DELETE FROM invitations; DELETE FROM access_requests; DELETE FROM memberships; DELETE FROM qr_designs; DELETE FROM tracked_qrs; DELETE FROM links WHERE legacy=0; DELETE FROM workspaces; DELETE FROM users;",
       );
       res.writeHead(200);
       res.end("Reset loopback test database");

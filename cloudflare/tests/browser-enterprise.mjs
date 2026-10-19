@@ -313,7 +313,7 @@ try {
   await wait("document.getElementById('list-count').textContent==='2'");
   assert.match(await ev("[...document.querySelectorAll('.link-row')].find(row=>row.innerText.includes('automatic-name')).querySelector('.short-link').href"),/\/r\/[a-f0-9]{8}$/);
 
-  await ev("[...document.querySelectorAll('.link-row')].find(r=>r.innerText.includes('my-private-browser-link')).querySelectorAll('button')[3].click()");
+  await ev("[...[...document.querySelectorAll('.link-row')].find(r=>r.innerText.includes('my-private-browser-link')).querySelectorAll('button')].find(b=>b.textContent==='Rules').click()");
   await wait("document.getElementById('routing-dialog')?.open");
   await ev("document.getElementById('routing-enabled').checked=true");
   await click("routing-add-audience");
@@ -337,6 +337,12 @@ try {
   await shot("routing-desktop",1440,1000);await shot("routing-mobile",390,844);
   await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await click("routing-close");
+  await ev("[...[...document.querySelectorAll('.link-row')].find(r=>r.innerText.includes('my-private-browser-link')).querySelectorAll('button')].find(b=>b.textContent.startsWith('Health')).click()");
+  await wait("document.getElementById('health-dialog')?.open");await click("health-enabled");await click("health-save");await wait("document.querySelectorAll('.health-result').length===3 && !document.getElementById('health-save').disabled");
+  await click("health-check");await wait("document.querySelectorAll('.health-healthy').length===2 && !document.getElementById('health-check').disabled");await click("health-check");await wait("document.querySelectorAll('.health-healthy').length===3 && !document.getElementById('health-check').disabled");
+  await shot("link-health-desktop");await shot("link-health-mobile",390,844);await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});await click("health-close");
+  assert.equal(await ev("[...document.querySelectorAll('.link-row')].find(r=>r.innerText.includes('my-private-browser-link')).innerText.includes('Health · OK')"),true);
+
   assert.equal(await ev("document.querySelector('[data-view=team] .nav-label').textContent"), "QR presets");
   assert.equal(await ev("getComputedStyle(document.getElementById('library-contexts')).display"), "none");
   assert.equal(await ev("document.querySelector('.sidebar').innerText.includes('company')"), false);
@@ -618,6 +624,7 @@ try {
     JSON.stringify(
       {
         passed: [
+          "owner monitoring controls, all routing targets, resumable checks, UTC results and mobile layout",
           "portrait upload/crop, private photo drafts, published snapshot preservation and mobile editor",
           "approved-snapshot sharing assets, decoded print/background PNGs, print PDF and safe email signature HTML",
           "company card templates, employee CSV validation/invalidation, resumable imports, formula-safe results and mobile layout",

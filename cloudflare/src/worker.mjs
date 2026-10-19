@@ -12,6 +12,8 @@ import {
   prune,
   operationalFailure,
 } from "./analytics.mjs";
+import {healthAPI,healthSummary,scheduledHealth} from "./health.mjs";
+import {checkTarget} from "./health-net.mjs";
 import {staffToolsAPI} from "./staff-tools.mjs";
 import {peopleAPI,publicPerson,prunePeople} from "./people.mjs";
 import {routingAPI,resolvedLink} from "./routing.mjs";
@@ -102,7 +104,7 @@ async function bodyJSON(request) {
     fail(400, "Invalid JSON data.");
   }
 }
-export function createApp(authenticate = verifyFirebaseToken) {
+export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkTarget}={}) {
   return {
     async fetch(request, env, ctx) {
       try {
@@ -211,7 +213,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
               apiKey: env.FIREBASE_API_KEY || "",
             },
             publicOrigin: publicOrigin(env, request),
-            features: { analytics: true, trackedQR: flags(env).creation },
+            features: { analytics: true, trackedQR: flags(env).creation, linkHealth:env.LINK_HEALTH_ENABLED==="true" },
           });
         if (!env.DB) fail(503, "Storage is not configured.", "configuration");
         const header = request.headers.get("Authorization") || "";
@@ -837,6 +839,9 @@ export function createApp(authenticate = verifyFirebaseToken) {
             },
             201,
           );
+        if(path==="/api/link-health"&&method==="GET")return json(await healthSummary(env,wid));
+        const healthMatch=path.match(/^\/api\/links\/([a-z0-9-]+)\/health(?:\/(check))?$/);
+        if(healthMatch)return json(await healthAPI({slug:healthMatch[1],action:healthMatch[2],method,env,wid,user,role:membership.role,personal:isPersonal,body:()=>bodyJSON(request),check:healthCheck}));
         const routingMatch=path.match(/^\/api\/links\/([a-z0-9-]+)\/routing(?:\/(preview))?$/);
         if(routingMatch)return json(await routingAPI({slug:routingMatch[1],action:routingMatch[2],method,body:()=>bodyJSON(request),env,wid,user,request}));
         const lm = path.match(/^\/api\/links\/([a-z0-9-]+)$/);
@@ -1159,7 +1164,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
       }
     },
     async scheduled(controller, env, ctx) {
-      const task = Promise.all([prunePeople(env).catch(()=>operationalFailure("people_retention_prune")),prune(env).catch(() => operationalFailure("retention_prune")),pruneResources(env).catch(() => operationalFailure("resource_retention_prune"))]);
+      const task = controller?.cron==="*/5 * * * *"?scheduledHealth(env,healthCheck).catch(()=>operationalFailure("link_health_run")):Promise.all([prunePeople(env).catch(()=>operationalFailure("people_retention_prune")),prune(env).catch(() => operationalFailure("retention_prune")),pruneResources(env).catch(() => operationalFailure("resource_retention_prune"))]);
       if (ctx?.waitUntil) ctx.waitUntil(task);
       else await task;
     },

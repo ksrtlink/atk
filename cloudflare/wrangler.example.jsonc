@@ -12,7 +12,8 @@
       "/api/*",
       "/r/*",
       "/q/*",
-      "/p/*", "/people/*",
+      "/p/*",
+      "/people/*",
       "/"
     ]
   },
@@ -35,11 +36,16 @@
     "ANALYTICS_ENABLED": "false",
     "TRACKED_QR_ENABLED": "false",
     "ANALYTICS_RETENTION_DAYS": "90",
-    "MAX_TRACKED_QRS_PER_WORKSPACE": "200"
+    "MAX_TRACKED_QRS_PER_WORKSPACE": "200",
+    "LINK_HEALTH_ENABLED": "false"
   },
   "triggers": {
     "crons": [
-      "17 * * * *"
+      "17 * * * *",
+      "*/5 * * * *"
     ]
-  }
+  },
+  "compatibility_flags": [
+    "global_fetch_strictly_public"
+  ]
 }
