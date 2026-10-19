@@ -584,3 +584,5 @@ export function resumeQRBuilder() {
   visibilityHandler?.("open");
   schedule();
 }
+
+export {loadLibrary as loadQRLibrary};

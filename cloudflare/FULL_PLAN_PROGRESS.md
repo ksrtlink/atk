@@ -11,7 +11,7 @@ The user explicitly included staff features on 19 October 2026. This checklist p
 | Country/language routing | Implemented: ordered country/language rules, unknown fallback, linked QR resolution, no-store + Vary response; staged language and fallback checks passed |
 | Link health | Pending: bounded checks, private-address/redirect/DNS-rebinding defenses, honest unreachable/blocked/broken states, no engagement pollution |
 | Employee profiles/contact files/QRs/admin | Core deployed: migration 0009, owner/assigned-employee permissions, draft/public separation, stable QR, vCard, opt-in funnel events; STAFF_CARDS.md. Company templates and import added in migration 0010. Still pending photo storage and actual iPhone/Android contact-import gates |
-| Employee import/signatures/meeting backgrounds/print cards | Company templates and resumable CSV employee import implemented (71 tests, browser import/export checks); signatures, meeting backgrounds and print-card distribution checks remain |
+| Employee import/signatures/meeting backgrounds/print cards | Company templates and resumable CSV employee import implemented (71 tests, browser import/export checks); signature HTML/copy, 1920×1080 meeting PNG and 85×55mm print PNG/PDF implemented with published snapshots and decoded export/PDF checks; actual email-client/meeting-app and physical print checks remain |
 | Apple Wallet | Pending issuer credentials, signing/update implementation and actual iPhone validation |
 | Google Wallet | Pending issuer onboarding/credentials and actual Android validation |
 | Contact exchange/events/inbox/export | Pending: consent and separate retention policy, permissions, abuse controls and attribution |

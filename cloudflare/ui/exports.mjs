@@ -96,3 +96,5 @@ export async function printSheets(
   }
   return pdf.output("blob");
 }
+
+export function contactCardPDF(png){const pdf=new jsPDF({unit:"mm",format:[85,55],orientation:"landscape",compress:true});pdf.addImage(png,"PNG",0,0,85,55);pdf.setProperties({title:"Contact card",creator:"TinyTrail"});return pdf.output("blob");}

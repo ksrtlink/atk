@@ -86,8 +86,10 @@ export async function wait(expression) {
       (await ev("document.body.innerText.slice(-1800)")),
   );
 }
-export const click = (id) =>
-  ev(`document.getElementById(${JSON.stringify(id)}).click()`);
+export const click = async (id) => {
+  await send("Page.bringToFront");
+  return ev(`document.getElementById(${JSON.stringify(id)}).click()`);
+};
 export const fill = (id, value) =>
   ev(
     `document.getElementById(${JSON.stringify(id)}).value=${JSON.stringify(value)};document.getElementById(${JSON.stringify(id)}).dispatchEvent(new Event('input',{bubbles:true}))`,
@@ -227,9 +229,24 @@ try {
   assert.equal(await ev("fetch('/people/qa-contact/contact.vcf').then(r=>r.text()).then(t=>t.includes('FN:Nadia Example'))"),true);
   await fill("people-name","Unpublished name");assert.equal(await ev("document.getElementById('people-publish').disabled"),true);
   assert.equal(await ev("fetch('/people/qa-contact').then(r=>r.text()).then(t=>t.includes('Unpublished name'))"),false);
-  await fill("people-name","Nadia Example");await shot("people-editor-desktop");await shot("people-editor-mobile",390,844);
+  await fill("people-name","Nadia Example");
+  await click("people-sharing");await wait("document.getElementById('staff-sharing-dialog')?.open && document.querySelector('.staff-sharing-preview img')?.complete");
+  await ev("window.__sharingExports=[];window.__sharingURL=URL.createObjectURL;URL.createObjectURL=function(b){window.__sharingExports.push(b);return window.__sharingURL(b)}");
+  await click("staff-sharing-png");await wait("window.__sharingExports.length>=2 && !document.getElementById('staff-sharing-png').disabled");
+  const sharingCardPNG=await ev("new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(window.__sharingExports.at(-1));})");
+  const sharingCard=PNG.sync.read(Buffer.from(sharingCardPNG,"base64"));assert.equal(sharingCard.width,1004);assert.equal(sharingCard.height,650);
+  const sharingQR=jsQR(new Uint8ClampedArray(sharingCard.data),sharingCard.width,sharingCard.height)?.data;assert.match(sharingQR,/\/people\/qr\/[0-9a-f-]{36}$/);
+  await ev("window.__sharingExports=[]");await click("staff-sharing-pdf");await wait("window.__sharingExports.some(b=>b.type==='application/pdf') && !document.getElementById('staff-sharing-pdf').disabled");
+  const sharingPDF=await ev("new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(window.__sharingExports.at(-1));})");
+  await writeFile(new URL("../../.qa/staff-print-card.pdf",import.meta.url),Buffer.from(sharingPDF,"base64"));await writeFile(new URL("../../.qa/staff-print-card.png",import.meta.url),Buffer.from(sharingCardPNG,"base64"));await writeFile(new URL("../../.qa/staff-print-expected.txt",import.meta.url),sharingQR);
+  await shot("staff-print-desktop");await shot("staff-print-mobile",390,844);await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await ev("document.getElementById('staff-sharing-type').value='background';document.getElementById('staff-sharing-type').dispatchEvent(new Event('change'))");await wait("document.getElementById('staff-sharing-status').textContent.startsWith('Keep your video')");await ev("window.__sharingExports=[]");await click("staff-sharing-png");await wait("window.__sharingExports.length>=2 && !document.getElementById('staff-sharing-png').disabled");
+  const backgroundPNG=await ev("new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(window.__sharingExports.at(-1));})");const background=PNG.sync.read(Buffer.from(backgroundPNG,"base64"));assert.equal(background.width,1920);assert.equal(background.height,1080);assert.equal(jsQR(new Uint8ClampedArray(background.data),background.width,background.height)?.data,sharingQR);await writeFile(new URL("../../.qa/staff-meeting-background.png",import.meta.url),Buffer.from(backgroundPNG,"base64"));await shot("staff-background-desktop");
+  await ev("document.getElementById('staff-sharing-type').value='signature';document.getElementById('staff-sharing-type').dispatchEvent(new Event('change'))");await wait("document.querySelector('.staff-signature-preview')?.shadowRoot?.textContent.includes('Nadia Example')");await ev("window.__sharingExports=[]");await click("staff-sharing-html");await wait("window.__sharingExports.length===1");const signature=await ev("window.__sharingExports[0].text()");assert.ok(signature.includes('Nadia Example'));assert.ok(!/<script|<img|<iframe/i.test(signature));await shot("staff-signature-desktop");
+  await ev("URL.createObjectURL=window.__sharingURL;delete window.__sharingURL;delete window.__sharingExports");await click("staff-sharing-close");
+  await shot("people-editor-desktop");await shot("people-editor-mobile",390,844);
   await click("people-qr");await wait("document.getElementById('qr-dialog')?.open");assert.match(await ev("document.getElementById('qr-url').value"),/\/people\/qr\/[0-9a-f-]{36}$/);
-  await wait("!document.getElementById('qr-download').disabled");const profileQR=await ev("document.getElementById('qr-url').value");
+  await wait("!document.getElementById('qr-download').disabled");const profileQR=await ev("document.getElementById('qr-url').value");assert.equal(profileQR,sharingQR);
   await ev("window.__profileExport=null;window.__profileObjectURL=URL.createObjectURL;URL.createObjectURL=function(b){window.__profileExport=b;return window.__profileObjectURL(b)}");
   await fill("qr-format","png");await ev("document.getElementById('qr-format').dispatchEvent(new Event('change'))");await click("qr-download");await wait("!!window.__profileExport");
   const profilePNG=await ev("new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(window.__profileExport);})");
@@ -586,6 +603,7 @@ try {
     JSON.stringify(
       {
         passed: [
+          "approved-snapshot sharing assets, decoded print/background PNGs, print PDF and safe email signature HTML",
           "company card templates, employee CSV validation/invalidation, resumable imports, formula-safe results and mobile layout",
           "contact-card creation/publication, private drafts, vCard download, stable profile QR and mobile editor",
           "schedule timezone conversion, rule preview precedence, saved audience rules and mobile editor",

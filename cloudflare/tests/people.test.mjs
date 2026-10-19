@@ -90,3 +90,16 @@ test("profile funnel counts separately, opts in, excludes HEAD/bot and prunes 90
  assert.equal(f.DB.sql.prepare("SELECT COUNT(*) AS n FROM engagement_events").get().n,0);
  f.DB.sql.prepare("UPDATE people_events SET occurred_at=? WHERE kind='profile_view'").run(Date.now()-91*86400000);await prunePeople(f.env);assert.equal(f.DB.sql.prepare("SELECT COUNT(*) AS n FROM people_events").get().n,3);
 });
+
+test("sharing assets require authorized access and use the published snapshot through later draft edits",async()=>{
+ const f=fixture();let p=await create(f);
+ assert.equal((await f.request(`/api/people/${p.id}/distribution`)).status,409);
+ p=await publish(f,p);p=await change(f,p,null,{content:{...p.content,name:'Private draft name'}});
+ const asset=await f.data(`/api/people/${p.id}/distribution`);assert.equal(asset.content.name,'Nadia Example');assert.equal(asset.qrUrl,p.qrUrl);
+ assert.equal((await f.request(`/api/people/${p.id}/distribution`,{user:'member'})).status,404);
+ assert.equal((await f.request(`/api/people/${p.id}/distribution`,{user:'other',wid:'b'})).status,404);
+ p=await change(f,p,'assignment',{assignedUid:'member',editable:[]});
+ assert.equal((await f.data(`/api/people/${p.id}/distribution`,{user:'member'})).content.name,'Nadia Example');
+ p=(await f.data(`/api/people/${p.id}`,{method:'DELETE',body:{version:p.version}})).profile;
+ assert.equal((await f.request(`/api/people/${p.id}/distribution`,{user:'member'})).status,409);
+});

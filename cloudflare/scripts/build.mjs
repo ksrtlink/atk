@@ -23,6 +23,7 @@ for (const file of [
   "resources.mjs",
   "people.mjs",
   "staff-tools.mjs",
+  "staff-distribution.mjs",
   "routing.mjs",
   "auth.mjs",
   "accounts.css",
@@ -43,6 +44,7 @@ const symbols = await Promise.all(iconNames.map(async name => {
 await writeFile(new URL("icons.svg", output), `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor">${symbols.join("")}</svg>`);
 await mkdir(new URL("public/shared/", project), {recursive:true});
 await cp(new URL("shared/routing.mjs",project),new URL("public/shared/routing.mjs",project));
+await cp(new URL("shared/staff-distribution.mjs",project),new URL("public/shared/staff-distribution.mjs",project));
 let html = await readFile(new URL("ui/index.html", project), "utf8");
 html = html.replace(
   "<!--ACCOUNT_DIALOG-->",

@@ -35,9 +35,10 @@ export async function peopleAPI({path,method,request,env,wid,user,role,personal,
   try{result=await env.DB.batch([s("INSERT INTO people(id,workspace_id,slug,qr_id,draft_json,mutation_id,created_by,updated_by,editable_json) SELECT ?,?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM people WHERE workspace_id=?)<? RETURNING *",b.id,wid,slug,crypto.randomUUID(),draft,mutation,user.uid,user.uid,allowed,wid,max),s("INSERT INTO people_revisions(profile_id,version,content_json,action,actor_uid) SELECT id,version,draft_json,'created',? FROM people WHERE id=? AND mutation_id=?",user.uid,b.id,mutation)]);}catch(e){if(String(e).includes("UNIQUE"))bad(409,"That profile address is already reserved.");throw e;}
   if(!result[0].results?.[0])bad(429,"Profile allowance reached.");return{profile:record(result[0].results[0],env,request,owner)};
  }
- const match=path.match(/^\/api\/people\/([0-9a-f-]{36})(?:\/(publish|unpublish|activate|assignment|report))?$/);if(!match)bad(404,"Endpoint not found.");
+ const match=path.match(/^\/api\/people\/([0-9a-f-]{36})(?:\/(publish|unpublish|activate|assignment|report|distribution))?$/);if(!match)bad(404,"Endpoint not found.");
  const row=await first(`SELECT * FROM people WHERE id=? AND workspace_id=?${scope}`,match[1],wid,...args);if(!row)bad(404,"Profile not found.");const action=match[2];
  if(method==="GET"&&!action)return{profile:record(row,env,request,owner)};
+ if(method==="GET"&&action==="distribution"){if(row.state!=="published"||!row.published_json)bad(409,"Publish this card before creating sharing assets.");return{content:JSON.parse(row.published_json),publicUrl:`${publicOrigin(env,request)}/people/${row.slug}`,qrUrl:`${publicOrigin(env,request)}/people/qr/${row.qr_id}`,slug:row.slug,publishedAt:row.published_at};}
  if(method==="GET"&&action==="report"){
   const days=Number(new URL(request.url).searchParams.get("days")||30);if(![7,30,90].includes(days))bad(400,"Choose 7, 30 or 90 days.");const end=Date.parse(new Date().toISOString().slice(0,10)),start=end-days*DAY;
   return{timezone:"UTC",from:new Date(start).toISOString(),to:new Date(end).toISOString(),counts:await all("SELECT kind,COUNT(*) AS count FROM people_events WHERE workspace_id=? AND profile_id=? AND occurred_at>=? AND occurred_at<? GROUP BY kind",wid,row.id,start,end),coverage:await collectionSettings(env,wid)};

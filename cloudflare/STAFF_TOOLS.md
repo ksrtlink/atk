@@ -25,4 +25,6 @@ No invitation email or other outbound notification is sent by import. Account em
 
 Staging migration 0010 applied. Worker b35042e9-c2ee-490a-a858-5df072919bf2 deployed and private template/import endpoints reject anonymous access. Delivered files are checked against the verified build before production. No real employee fixture is inserted into production.
 
-This completes the import/template portion, not Wallet, photo storage, email signature or meeting-background acceptance gates. See STAFF_CARDS.md and FULL_PLAN_PROGRESS.md for remaining work.
+Production migration 0010 and Worker a9ac64cc-8be6-44e9-857e-d3b7cf3bff8e deployed; delivered files, anonymous private API denial and foreign-key checks passed.
+
+This completes the import/template portion, not Wallet or photo storage acceptance gates. Sharing-asset progress is in STAFF_DISTRIBUTION.md. See STAFF_CARDS.md and FULL_PLAN_PROGRESS.md for remaining work.
