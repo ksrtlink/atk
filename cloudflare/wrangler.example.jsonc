@@ -37,7 +37,9 @@
     "TRACKED_QR_ENABLED": "false",
     "ANALYTICS_RETENTION_DAYS": "90",
     "MAX_TRACKED_QRS_PER_WORKSPACE": "200",
-    "LINK_HEALTH_ENABLED": "false"
+    "LINK_HEALTH_ENABLED": "false",
+    "CONTACT_EXCHANGE_ENABLED": "false",
+    "CONTACT_EXCHANGE_POLICY": ""
   },
   "triggers": {
     "crons": [

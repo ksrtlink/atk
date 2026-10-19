@@ -14,7 +14,7 @@ The user explicitly included staff features on 19 October 2026. This checklist p
 | Employee import/signatures/meeting backgrounds/print cards | Company templates and resumable CSV employee import implemented (71 tests, browser import/export checks); signature HTML/copy, 1920×1080 meeting PNG and 85×55mm print PNG/PDF implemented with published snapshots and decoded export/PDF checks; actual email-client/meeting-app and physical print checks remain |
 | Apple Wallet | Pending issuer credentials, signing/update implementation and actual iPhone validation |
 | Google Wallet | Pending issuer onboarding/credentials and actual Android validation |
-| Contact exchange/events/inbox/export | Pending: consent and separate retention policy, permissions, abuse controls and attribution |
+| Contact exchange/events/inbox/export | Implementation prepared: migration 0013, signed voluntary forms, validated event links, scoped inbox/review/delete/CSV, abuse limits and independent retention; 111 registered tests, browser checks and deployed-runtime/D1 checks passed. Production migration 0013 and Worker 9cebe0e0-71c2-4d65-adb2-ca1ad2d7127c deployed with public collection disabled pending separate policy approval; CONTACT_EXCHANGE.md |
 | CRM integration | Pending actual company-selected provider, authorized credentials and retry/deletion acceptance checks |
 | Monitoring and notifications | Operational health/runbooks required for each release; external recipients/channels require explicit authorization |
 

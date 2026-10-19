@@ -10,3 +10,5 @@ await import("../tests/staff-distribution.test.mjs");
 await import("../tests/photos.test.mjs");
 await import("../tests/health-net.test.mjs");
 await import("../tests/health.test.mjs");
+
+await import("../tests/contact-exchange.test.mjs");

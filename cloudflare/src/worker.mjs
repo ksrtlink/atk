@@ -15,6 +15,7 @@ import {
 import {healthAPI,healthSummary,scheduledHealth} from "./health.mjs";
 import {checkTarget} from "./health-net.mjs";
 import {staffToolsAPI} from "./staff-tools.mjs";
+import {exchangeAPI,publicExchange,pruneContacts,contactEnabled,exchangeError} from "./contact-exchange.mjs";
 import {peopleAPI,publicPerson,prunePeople} from "./people.mjs";
 import {routingAPI,resolvedLink} from "./routing.mjs";
 import { resourceAPI, publicResource, pruneResources } from "./resources.mjs";
@@ -112,6 +113,7 @@ export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkT
           path = url.pathname,
           method = request.method;
         if (!path.startsWith("/api/")) {
+          if (/^\/people\/[a-z0-9-]+\/exchange\/?$/.test(path)) {try{return await publicExchange(request,env);}catch(e){if(e instanceof Problem)return exchangeError(e,request);throw e;}}
           if (!["GET", "HEAD"].includes(method))
             return new Response("Method not allowed", {
               status: 405,
@@ -213,7 +215,7 @@ export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkT
               apiKey: env.FIREBASE_API_KEY || "",
             },
             publicOrigin: publicOrigin(env, request),
-            features: { analytics: true, trackedQR: flags(env).creation, linkHealth:env.LINK_HEALTH_ENABLED==="true" },
+            features: { contactExchange:contactEnabled(env), analytics: true, trackedQR: flags(env).creation, linkHealth:env.LINK_HEALTH_ENABLED==="true" },
           });
         if (!env.DB) fail(503, "Storage is not configured.", "configuration");
         const header = request.headers.get("Authorization") || "";
@@ -463,6 +465,9 @@ export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkT
           fail(403, "Your account does not have access to this company. Contact your administrator.", "membership");
         if (path === "/api/people-template" || path === "/api/people-imports" || path.startsWith("/api/people-imports/"))
           return json(await staffToolsAPI({path,method,request,env,wid,user,role:membership.role,personal:isPersonal,body:()=>bodyJSON(request)}));
+        if (/^\/api\/people\/[0-9a-f-]{36}\/exchange(?:\/|$)/.test(path)) {
+          const result=await exchangeAPI({path,method,request,env,wid,user,role:membership.role,body:()=>bodyJSON(request)});return result instanceof Response?result:json(result);
+        }
         if (path === "/api/people" || path.startsWith("/api/people/"))
           return json(await peopleAPI({path,method,request,env,wid,user,role:membership.role,personal:isPersonal,body:()=>bodyJSON(request)}));
         if (path === "/api/resources" || path.startsWith("/api/resources/"))
@@ -1164,7 +1169,7 @@ export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkT
       }
     },
     async scheduled(controller, env, ctx) {
-      const task = controller?.cron==="*/5 * * * *"?scheduledHealth(env,healthCheck).catch(()=>operationalFailure("link_health_run")):Promise.all([prunePeople(env).catch(()=>operationalFailure("people_retention_prune")),prune(env).catch(() => operationalFailure("retention_prune")),pruneResources(env).catch(() => operationalFailure("resource_retention_prune"))]);
+      const task = controller?.cron==="*/5 * * * *"?scheduledHealth(env,healthCheck).catch(()=>operationalFailure("link_health_run")):Promise.all([pruneContacts(env).catch(()=>operationalFailure("contact_retention_prune")),prunePeople(env).catch(()=>operationalFailure("people_retention_prune")),prune(env).catch(() => operationalFailure("retention_prune")),pruneResources(env).catch(() => operationalFailure("resource_retention_prune"))]);
       if (ctx?.waitUntil) ctx.waitUntil(task);
       else await task;
     },

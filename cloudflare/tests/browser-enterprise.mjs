@@ -237,6 +237,26 @@ try {
   assert.equal(await ev("fetch('/people/qa-contact/photo').then(r=>r.status)"),200);
   const publicPhotoHash=await ev("fetch('/people/qa-contact/photo').then(r=>r.arrayBuffer()).then(b=>crypto.subtle.digest('SHA-256',b)).then(a=>Array.from(new Uint8Array(a)).join(','))");
 
+  await click("people-contacts");await wait("document.querySelector('.contact-inbox .contact-controls input')");
+  await ev("document.querySelector('.contact-inbox .contact-controls input').click();[...document.querySelectorAll('.contact-inbox button')].find(b=>b.textContent==='Save collection setting').click()");
+  await wait("document.querySelector('.contact-inbox .contact-controls input')?.checked && !document.querySelector('.contact-inbox > div:last-child').inert");
+  await ev("const f=document.querySelector('.contact-event-list form');f.querySelector('input').value='Design conference';f.requestSubmit()");await wait("document.querySelector('.contact-event .resource-address')");
+  const eventURL=await ev("document.querySelector('.contact-event .resource-address').textContent");
+  const eventPath=new URL(eventURL).pathname.replace(/\/$/,'')+'/exchange'+new URL(eventURL).search;
+  assert.equal(await ev(`fetch(${JSON.stringify(new URL(eventURL).pathname+new URL(eventURL).search)}).then(r=>r.text()).then(t=>t.includes('Share your details'))`),true);
+  await ev(`(async()=>{window.__contactForm=await fetch(${JSON.stringify(eventPath)}).then(r=>r.text()).then(t=>new DOMParser().parseFromString(t,'text/html'));window.__contactToken=window.__contactForm.querySelector('[name=token]').value})()`);
+  await new Promise(r=>setTimeout(r,2200));
+  assert.equal(await ev(`fetch(${JSON.stringify(eventPath)},{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:window.__contactToken,name:'<Visitor Example>',email:'visitor@example.com',organization:'Example',message:'Please follow up',consent:'contact-exchange-v1',website:''})}).then(r=>r.text()).then(t=>t.includes('Details shared'))`),true);
+  await ev("[...document.querySelectorAll('.contact-inbox button')].find(b=>b.textContent==='Refresh').click()");await wait("document.querySelector('.contact-inbox-entry h4')?.textContent==='<Visitor Example>'");assert.equal(await ev("document.querySelectorAll('.contact-inbox-entry img').length"),0);
+  await shot("contact-inbox-desktop");await shot("contact-inbox-mobile",390,844);
+  await ev("[...document.querySelectorAll('.contact-inbox button')].find(b=>b.textContent==='Mark reviewed').click()");await wait("[...document.querySelectorAll('.contact-inbox button')].some(b=>b.textContent==='Mark new')");
+  await ev("window.__contactBlob=null;window.__contactURL=URL.createObjectURL;URL.createObjectURL=b=>{window.__contactBlob=b;return window.__contactURL(b)};[...document.querySelectorAll('.contact-inbox button')].find(b=>b.textContent==='Export CSV').click()");await wait("!!window.__contactBlob");assert.match(await ev("window.__contactBlob.text()"),/visitor@example.com/);await ev("URL.createObjectURL=window.__contactURL;delete window.__contactURL;delete window.__contactBlob");
+  await ev("window.__contactConfirm=window.confirm;window.confirm=()=>false;[...document.querySelectorAll('.contact-inbox button')].find(b=>b.textContent==='Delete contact').click()");await new Promise(r=>setTimeout(r,100));assert.equal(await ev("document.querySelectorAll('.contact-inbox-entry').length"),1);
+  await ev("window.confirm=()=>true;[...document.querySelectorAll('.contact-inbox button')].find(b=>b.textContent==='Delete contact').click()");await wait("document.querySelectorAll('.contact-inbox-entry').length===0");await ev("window.confirm=window.__contactConfirm;delete window.__contactConfirm;delete window.__contactToken;delete window.__contactForm");
+  await ev("window.dispatchEvent(new Event('tinytrail:clear-qr'))");await wait("!document.querySelector('.contact-inbox')");assert.equal(await ev("document.querySelectorAll('.contact-inbox-entry').length"),0);
+  await ev("document.querySelector('[data-view=people]').click()");await wait("document.querySelector('#people-list button')");await ev("[...document.querySelectorAll('#people-list article')].find(a=>a.textContent.includes('Nadia Example')).querySelector('button').click()");await wait("document.getElementById('people-name').value==='Nadia Example'");
+  await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+
   await fill("people-name","Unpublished name");assert.equal(await ev("document.getElementById('people-publish').disabled"),true);
   assert.equal(await ev("fetch('/people/qa-contact').then(r=>r.text()).then(t=>t.includes('Unpublished name'))"),false);
   await fill("people-name","Nadia Example");
@@ -624,6 +644,7 @@ try {
     JSON.stringify(
       {
         passed: [
+          "voluntary contact form, consent, event attribution, owner inbox, review/delete, CSV and mobile layout",
           "owner monitoring controls, all routing targets, resumable checks, UTC results and mobile layout",
           "portrait upload/crop, private photo drafts, published snapshot preservation and mobile editor",
           "approved-snapshot sharing assets, decoded print/background PNGs, print PDF and safe email signature HTML",
