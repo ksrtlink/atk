@@ -20,6 +20,7 @@ for (const file of ["kearney-logo.svg", "links.json"])
 for (const file of [
   "app.mjs",
   "utm.mjs",
+  "resources.mjs",
   "auth.mjs",
   "accounts.css",
   "tinytrail.css",
@@ -31,7 +32,7 @@ for (const file of [
   "analytics.css",
 ])
   await cp(new URL(`ui/${file}`, project), new URL(file, output));
-const iconNames = ["link", "qr-code", "stack", "chart-bar", "users", "shield-check", "sidebar-simple", "eye", "minus", "x"];
+const iconNames = ["link", "files", "qr-code", "stack", "chart-bar", "users", "shield-check", "sidebar-simple", "eye", "minus", "x"];
 const symbols = await Promise.all(iconNames.map(async name => {
   const svg = await readFile(new URL(`node_modules/@phosphor-icons/core/assets/regular/${name}.svg`, project), "utf8");
   return `<symbol id="${name}" viewBox="0 0 256 256">${svg.replace(/^.*?<svg[^>]*>/s, "").replace(/<\/svg>\s*$/, "")}</symbol>`;
@@ -79,7 +80,7 @@ landing = landing.replaceAll(
   }),
 );
 await writeFile(new URL("public/index.html", project), landing);
-for (const file of ["landing.css", "landing.mjs", "theme.css", "cloudflare-style.css"])
+for (const file of ["landing.css", "landing.mjs", "theme.css", "cloudflare-style.css", "resource-page.css"])
   await cp(new URL("ui/" + file, project), new URL("public/" + file, project));
 await writeFile(
   new URL("public/_headers", project),

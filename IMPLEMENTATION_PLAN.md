@@ -1,6 +1,6 @@
 # TinyTrail implementation plan and execution rules
 
-Status: Release 1 implemented and deployed on 16 October 2026; see `cloudflare/RELEASE1_CONTRACT.md`, `cloudflare/RELEASE1_EVIDENCE.md` and `cloudflare/RELEASE1_RUNBOOK.md`. Releases 2–4 and remaining Release 5 features remain specifications. The standalone UTM builder from Release 5 is implemented as a user-selected follow-up; see `cloudflare/UTM_BUILDER.md`.  
+Status: Release 1 implemented and deployed on 16 October 2026; see `cloudflare/RELEASE1_CONTRACT.md`, `cloudflare/RELEASE1_EVIDENCE.md` and `cloudflare/RELEASE1_RUNBOOK.md`. Releases 2–4 and remaining Release 5 features remain specifications. The UTM builder and resource pages from Release 5 are delivered user-selected follow-ups; see `cloudflare/UTM_BUILDER.md` and `cloudflare/RESOURCE_PAGES.md`. The user has now included staff features in continuous full-plan execution; see `cloudflare/FULL_PLAN_PROGRESS.md`.  
 Prepared: 16 October 2026.  
 Purpose: extend the existing company platform with reliable analytics, employee business cards, Wallet passes, and campaign services.
 
@@ -335,4 +335,4 @@ Verify current versions before relying on provider details.
 - Apple Wallet distribution/updates: https://developer.apple.com/documentation/walletpasses/distributing-and-updating-a-pass
 - Apple Wallet identifiers/certificates: https://developer.apple.com/help/account/capabilities/create-wallet-identifiers-and-certificates/
 
-Release 1 is delivered; its verification and limits are recorded in `cloudflare/RELEASE1_EVIDENCE.md`. Further implementation starts with Release 2 as a separately scoped task; Releases 2–5 are not part of this deployment.
+Release 1 is delivered; its verification and limits are recorded in `cloudflare/RELEASE1_EVIDENCE.md`. Continuous full-plan implementation, including staff features, is now explicitly authorized by the user. Preserve the release acceptance gates and use `cloudflare/FULL_PLAN_PROGRESS.md` for current remaining work.

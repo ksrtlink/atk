@@ -13,6 +13,7 @@ import {
 } from "./auth.mjs";
 const $ = (id) => document.getElementById(id);
 let analyticsView = null;
+let resourcesView = null;
 let creatorHidden = false;
 try { creatorHidden = localStorage.getItem("tinytrail.creator-hidden") === "true"; } catch {}
 export const node = (tag, cls = "", value = "") =>
@@ -146,6 +147,7 @@ function clearLibrary() {
   ])
     $(id)?.replaceChildren();
   bulk?.reset();
+  resourcesView?.reset();
   analyticsView?.reset();
 }
 let requestCompany = false;
@@ -225,7 +227,7 @@ function ui() {
   $("preview").textContent = editing
     ? editing.shortUrl
     : `${config?.publicOrigin || location.origin}/r/${$("slug").value || "your-name"}`;
-  for (const name of ["links", "designs", "bulk", "team", "admin", "analytics"])
+  for (const name of ["links", "designs", "resources", "bulk", "team", "admin", "analytics"])
     $("view-" + name).classList.toggle(
       "hidden",
       view !== name || (name === "admin" ? !me?.platformAdmin : !workspace),
@@ -422,7 +424,7 @@ async function renderTeam(info) {
     $("presets").append(node("div", "list-item", p.name));
   if (!presets.length) $("presets").textContent = "No saved presets yet.";
 }
-async function openQR(url = "", design = null) {
+async function openQR(url = "", design = null, {staticOnly=false} = {}) {
   if (!workspace)
     throw Error("Sign in and verify your email before creating QR codes.");
   const { openQRBuilder } = await import("./qr-builder.mjs");
@@ -440,7 +442,7 @@ async function openQR(url = "", design = null) {
     links,
     design,
     asset,
-    trackingAvailable: !!config.features?.trackedQR,
+    trackingAvailable: !staticOnly && !!config.features?.trackedQR,
     onVisibility: state => {
       $("qr-resume").classList.toggle("hidden", state !== "minimized" || wid !== workspace?.id || uid !== account()?.uid);
     },
@@ -558,6 +560,13 @@ async function setView(next) {
       });
     }
     await analyticsView.refresh();
+  }
+  if (next === "resources" && workspace) {
+    if (!resourcesView) {
+      const {mountResources}=await import("./resources.mjs");
+      resourcesView=mountResources({api,act,message,getState:()=>({workspace}),onQR:url=>openQR(url,null,{staticOnly:true})});
+    }
+    await resourcesView.refresh();
   }
   if (next === "bulk" && workspace) {
     if (!bulk) {

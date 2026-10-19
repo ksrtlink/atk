@@ -12,6 +12,7 @@ import {
   prune,
   operationalFailure,
 } from "./analytics.mjs";
+import { resourceAPI, publicResource, pruneResources } from "./resources.mjs";
 import { verifyFirebaseToken } from "./auth.mjs";
 import {
   Problem,
@@ -111,6 +112,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
               status: 405,
               headers: { ...security, Allow: "GET, HEAD" },
             });
+          if (path.startsWith("/p/")) return await publicResource(request,env,ctx);
           const qrRoute = path.match(/^\/q\/([0-9a-f-]{36})\/?$/);
           if (qrRoute) {
             if (!env.DB) fail(503, "Storage unavailable.");
@@ -451,6 +453,8 @@ export function createApp(authenticate = verifyFirebaseToken) {
           membership = isPersonal ? personal : memberships.find((w) => w.id === wid);
         if (!membership || (!isPersonal && !admin && assigned?.id !== wid))
           fail(403, "Your account does not have access to this company. Contact your administrator.", "membership");
+        if (path === "/api/resources" || path.startsWith("/api/resources/"))
+          return json(await resourceAPI({path,method,request,env,wid,user,role:membership.role,personal:isPersonal,body:()=>bodyJSON(request)}));
         if (isPersonal) env = {...env, MAX_TRACKED_QRS_PER_WORKSPACE: "25"};
         const owner = () => {
           if (membership.role !== "owner")
@@ -1143,7 +1147,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
       }
     },
     async scheduled(controller, env, ctx) {
-      const task = prune(env).catch(() => operationalFailure("retention_prune"));
+      const task = Promise.all([prune(env).catch(() => operationalFailure("retention_prune")),pruneResources(env).catch(() => operationalFailure("resource_retention_prune"))]);
       if (ctx?.waitUntil) ctx.waitUntil(task);
       else await task;
     },

@@ -1,5 +1,7 @@
 import { writeFile, mkdir, readFile, readdir } from "node:fs/promises";
 import assert from "node:assert/strict";
+import jsQR from "jsqr";
+import {PNG} from "pngjs";
 import { unzipSync, strFromU8 } from "fflate";
 await fetch("http://127.0.0.1:4174/qa/reset", { method: "POST" });
 const tabs = await (await fetch("http://127.0.0.1:9226/json/list")).json(),
@@ -220,7 +222,7 @@ try {
   assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"),"none");
   await click("sidebar-toggle");
   assert.equal(await ev("document.body.classList.contains('sidebar-collapsed')"), true);
-  assert.equal(await ev("document.querySelectorAll('.enterprise-nav .ui-icon use').length"), 6);
+  assert.equal(await ev("document.querySelectorAll('.enterprise-nav .ui-icon use').length"), 7);
   await click("sidebar-toggle");
   await fill("destination", "https://example.com/retained-draft");
   await click("creator-toggle");
@@ -453,19 +455,71 @@ try {
   await ev("document.querySelector('[data-view=links]').click()");
   await shot("enterprise-desktop", 1440, 1000);
   await shot("enterprise-mobile", 390, 844);
+  await ev("document.querySelector('[data-view=resources]').click()");
+  await wait("document.getElementById('resource-new')");
+  await click("resource-new");
+  await fill("resource-title", "Conference resources");
+  await fill("resource-slug", "browser-resources");
+  await fill("resource-description", "Everything for the event, in one place.");
+  await ev("document.querySelector('[data-resource-field=label]').value='Programme';document.querySelector('[data-resource-field=label]').dispatchEvent(new Event('input'))");
+  await ev("document.querySelector('[data-resource-field=url]').value='https://example.com/programme';document.querySelector('[data-resource-field=url]').dispatchEvent(new Event('input'))");
+  await ev("document.getElementById('resource-form').requestSubmit()");
+  await wait("document.getElementById('resource-public-url').textContent.includes('/p/browser-resources') && document.getElementById('resource-dirty').textContent==='Draft saved'");
+  const resourceURL=await ev("document.getElementById('resource-public-url').textContent");
+  assert.equal(await ev(`fetch(${JSON.stringify(resourceURL)}).then(r=>r.status)`),404);
+  await ev("document.getElementById('resource-consent').checked=true;document.getElementById('resource-consent').dispatchEvent(new Event('change'))");
+  await click("resource-publish");
+  await wait("document.getElementById('resource-list').innerText.includes('Published')");
+  await fill("resource-title", "Private next edition");
+  await ev("document.getElementById('resource-form').requestSubmit()");
+  await wait("document.getElementById('resource-dirty').textContent==='Draft saved'");
+  assert.equal(await ev(`fetch(${JSON.stringify(resourceURL)}).then(r=>r.text()).then(s=>s.includes('Private next edition'))`),false);
+  await shot("resource-editor-desktop",1440,1000);
+  await shot("resource-editor-mobile",390,844);
+  await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await click("resource-qr");
+  await wait("document.getElementById('qr-dialog').open && !document.getElementById('qr-download').disabled");
+  assert.equal(await ev("document.getElementById('qr-mode').value"),"static");
+  assert.equal(await ev("document.getElementById('qr-url').value"),resourceURL);
+  await fill("qr-format","png");
+  await ev("window.__exports=[];document.getElementById('qr-format').dispatchEvent(new Event('change'))");
+  await click("qr-download");
+  await wait("window.__exports.length===1");
+  const resourcePNG=await ev("new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(window.__exports[0]);})");
+  const image=PNG.sync.read(Buffer.from(resourcePNG,"base64"));
+  assert.equal(jsQR(new Uint8ClampedArray(image.data),image.width,image.height)?.data,resourceURL);
+  await click("qr-close");
+  await send("Page.navigate",{url:resourceURL});
+  await wait("document.querySelector('.resource-public-link')");
+  assert.equal(await ev("document.querySelector('h1').textContent"),"Conference resources");
+  await shot("resource-public-desktop",1440,1000);
+  await shot("resource-public-mobile",390,844);
+  await send("Page.navigate",{url:"http://127.0.0.1:4174/manage/"});
+  await wait("document.getElementById('notice').textContent.includes('Sign in')");
+  await login("alice");
+  await ev("document.querySelector('[data-view=resources]').click()");
+  await wait("document.querySelector('#resource-list button')");
+  await ev("document.querySelector('#resource-list button').click()");
+  await wait("document.getElementById('resource-title').value==='Private next edition'");
+  await click("resource-unpublish");
+  await wait("document.getElementById('resource-publish-note').textContent.includes('Private draft')");
+  assert.equal(await ev(`fetch(${JSON.stringify(resourceURL)}).then(r=>r.status)`),410);
   await logout();
   assert.equal(
     await ev("document.getElementById('links').childElementCount"),
     0,
   );
-  assert.equal(await ev("document.getElementById('qr-url').value"), "");
-  assert.equal(await ev("document.getElementById('bulk-utm-source').value"), "");
+  assert.equal(await ev("document.getElementById('qr-url')?.value || ''"), "");
+  assert.equal(await ev("document.getElementById('bulk-utm-source')?.value || ''"), "");
+  assert.equal(await ev("document.getElementById('resource-title').value"), "");
+  assert.equal(await ev("document.getElementById('resource-items').childElementCount"), 0);
   assert.equal(errors.length, 0, JSON.stringify(errors));
   console.log(
     JSON.stringify(
       {
         passed: [
-          "campaign URL preview, keep/replace, individual link/QR destinations, CSV overrides and preview invalidation",
+          "resource drafts/public snapshots, publication, mobile pages, decoded page QR and unpublish",
+    "campaign URL preview, keep/replace, individual link/QR destinations, CSV overrides and preview invalidation",
     "white accent actions, solo navigation, link deletion cancel/confirm/Trash/restore",
     "layered theme, sidebar icons and collapse, creation panel hides without losing input",
     "QR tabs support keyboard arrows, soft selection, hide preview, minimize/resume",

@@ -257,3 +257,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 @media(max-width:650px) { .campaign-grid { grid-template-columns:minmax(0,1fr); } }
 
 .campaign-builder details { margin:0; padding:0; border:0; }
+
+.resource-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr)); gap:16px; }
+.resource-card h3 { margin:0 0 8px; font-size:17px; font-weight:500; }
+.resource-address { font:12px/1.6 var(--font-mono); overflow-wrap:anywhere; }
+#resource-form { max-width:none; }
+#resource-form .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.resource-item-editor { padding:12px; margin:12px 0; border:1px solid var(--line); border-radius:var(--radius-lg); background:var(--theme-paper); }
+.resource-item-fields { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:12px; }
+.resource-item-fields>div:last-child { grid-column:1/-1; }
+.resource-item-fields label { margin-top:0; }
+#resource-items .action-row { margin-top:8px; }
+.resource-preview-item { display:grid; gap:4px; border-bottom:1px solid var(--line); padding:12px 0; overflow-wrap:anywhere; }
+.resource-preview-item p { margin:0; }
+#resource-editor details { margin:20px 0; padding:0; border:0; }
+#resource-editor summary { cursor:pointer; font-size:13px; padding:8px 0; }
+#resource-editor .check { font-size:13px; line-height:1.5; }
+#resource-report-days { max-width:180px; margin-right:8px; }
+@media(max-width:650px) { #resource-form .form-grid,.resource-item-fields { grid-template-columns:minmax(0,1fr); } }
+
+#view-resources .button { width:auto; display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; }
+#view-resources .section-heading h2 { flex:1; }
+#view-resources .section-heading .button { flex:none; }
+#resource-publishing { margin-top:20px; padding-top:16px; border-top:1px solid var(--line); }
