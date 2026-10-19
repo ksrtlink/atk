@@ -7,8 +7,8 @@ The user explicitly included staff features on 19 October 2026. This checklist p
 | Links, QR styling/exports, bulk, personal/company accounts, analytics | Deployed; existing verification records and registered regressions |
 | UTM builder | Deployed; UTM_BUILDER.md |
 | Resource pages | Deployed; migration 0007, staged edge/count checks, production asset/API checks and foreign-key verification passed; RESOURCE_PAGES.md |
-| Scheduled destinations | Pending: explicit timezone, boundaries, fallback and deterministic server resolution |
-| Country/language routing | Pending: explicit ordered rules, safe unknown fallback, linked QR behavior and no-cache response |
+| Scheduled destinations | Implemented: migration 0008; explicit timezone and DST validation, deterministic boundaries/fallback; 59 registered tests and staged /r + /q edge checks passed |
+| Country/language routing | Implemented: ordered country/language rules, unknown fallback, linked QR resolution, no-store + Vary response; staged language and fallback checks passed |
 | Link health | Pending: bounded checks, private-address/redirect/DNS-rebinding defenses, honest unreachable/blocked/broken states, no engagement pollution |
 | Employee profiles/contact files/QRs/admin | Pending: complete Release 2 acceptance gates |
 | Employee import/signatures/meeting backgrounds/print cards | Pending: Release 3 distribution checks |

@@ -260,6 +260,30 @@ try {
   await wait("document.getElementById('list-count').textContent==='2'");
   assert.match(await ev("[...document.querySelectorAll('.link-row')].find(row=>row.innerText.includes('automatic-name')).querySelector('.short-link').href"),/\/r\/[a-f0-9]{8}$/);
 
+  await ev("[...document.querySelectorAll('.link-row')].find(r=>r.innerText.includes('my-private-browser-link')).querySelectorAll('button')[3].click()");
+  await wait("document.getElementById('routing-dialog')?.open");
+  await ev("document.getElementById('routing-enabled').checked=true");
+  await click("routing-add-audience");
+  await ev("document.querySelector('[data-routing-field=country]').value='AE';document.querySelector('[data-routing-field=country]').dispatchEvent(new Event('input'))");
+  await ev("document.querySelector('[data-routing-field=language]').value='ar';document.querySelector('[data-routing-field=language]').dispatchEvent(new Event('input'))");
+  await ev("document.querySelector('#routing-audiences [data-routing-field=destination]').value='https://example.com/arabic';document.querySelector('#routing-audiences [data-routing-field=destination]').dispatchEvent(new Event('input'))");
+  await click("routing-add-schedule");
+  for(const [field,value] of [["timezone","Asia/Dubai"],["localStart","2026-10-20T09:00"],["localEnd","2026-10-20T10:00"],["destination","https://example.com/event"]])
+    await ev(`document.querySelector('#routing-schedules [data-routing-field=${field}]').value=${JSON.stringify(value)};document.querySelector('#routing-schedules [data-routing-field=${field}]').dispatchEvent(new Event('input'))`);
+  await ev("document.querySelector('.routing-test').open=true");
+  await fill("routing-test-country","AE");await fill("routing-test-language","ar-AE");await fill("routing-test-time","2026-10-20T05:30");
+  await click("routing-test");
+  await wait("document.getElementById('routing-test-result').textContent==='Schedule: https://example.com/event'");
+  await fill("routing-test-time","2026-10-20T07:00");await click("routing-test");
+  await wait("document.getElementById('routing-test-result').textContent==='Audience rule: https://example.com/arabic'");
+  await fill("routing-test-country","US");await fill("routing-test-language","en");await click("routing-test");
+  await wait("document.getElementById('routing-test-result').textContent.startsWith('Fallback: ')");
+  assert.equal(await ev("document.getElementById('routing-test-result').textContent"),"Fallback: "+taggedDestination);
+  await ev("document.getElementById('routing-form').requestSubmit()");
+  await wait("document.getElementById('routing-test-result').textContent.startsWith('Rules saved')");
+  await shot("routing-desktop",1440,1000);await shot("routing-mobile",390,844);
+  await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await click("routing-close");
   assert.equal(await ev("document.querySelector('[data-view=team] .nav-label').textContent"), "QR presets");
   assert.equal(await ev("getComputedStyle(document.getElementById('library-contexts')).display"), "none");
   assert.equal(await ev("document.querySelector('.sidebar').innerText.includes('company')"), false);
@@ -518,7 +542,8 @@ try {
     JSON.stringify(
       {
         passed: [
-          "resource drafts/public snapshots, publication, mobile pages, decoded page QR and unpublish",
+          "schedule timezone conversion, rule preview precedence, saved audience rules and mobile editor",
+    "resource drafts/public snapshots, publication, mobile pages, decoded page QR and unpublish",
     "campaign URL preview, keep/replace, individual link/QR destinations, CSV overrides and preview invalidation",
     "white accent actions, solo navigation, link deletion cancel/confirm/Trash/restore",
     "layered theme, sidebar icons and collapse, creation panel hides without losing input",

@@ -21,6 +21,7 @@ for (const file of [
   "app.mjs",
   "utm.mjs",
   "resources.mjs",
+  "routing.mjs",
   "auth.mjs",
   "accounts.css",
   "tinytrail.css",
@@ -38,6 +39,8 @@ const symbols = await Promise.all(iconNames.map(async name => {
   return `<symbol id="${name}" viewBox="0 0 256 256">${svg.replace(/^.*?<svg[^>]*>/s, "").replace(/<\/svg>\s*$/, "")}</symbol>`;
 }));
 await writeFile(new URL("icons.svg", output), `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor">${symbols.join("")}</svg>`);
+await mkdir(new URL("public/shared/", project), {recursive:true});
+await cp(new URL("shared/routing.mjs",project),new URL("public/shared/routing.mjs",project));
 let html = await readFile(new URL("ui/index.html", project), "utf8");
 html = html.replace(
   "<!--ACCOUNT_DIALOG-->",

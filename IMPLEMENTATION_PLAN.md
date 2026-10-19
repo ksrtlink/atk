@@ -1,6 +1,6 @@
 # TinyTrail implementation plan and execution rules
 
-Status: Release 1 implemented and deployed on 16 October 2026; see `cloudflare/RELEASE1_CONTRACT.md`, `cloudflare/RELEASE1_EVIDENCE.md` and `cloudflare/RELEASE1_RUNBOOK.md`. Releases 2–4 and remaining Release 5 features remain specifications. The UTM builder and resource pages from Release 5 are delivered user-selected follow-ups; see `cloudflare/UTM_BUILDER.md` and `cloudflare/RESOURCE_PAGES.md`. The user has now included staff features in continuous full-plan execution; see `cloudflare/FULL_PLAN_PROGRESS.md`.  
+Status: Release 1 implemented and deployed on 16 October 2026; see `cloudflare/RELEASE1_CONTRACT.md`, `cloudflare/RELEASE1_EVIDENCE.md` and `cloudflare/RELEASE1_RUNBOOK.md`. Releases 2–4 and remaining Release 5 features remain specifications. The UTM builder, resource pages, scheduling and audience routing from Release 5 are delivered user-selected follow-ups; see `cloudflare/UTM_BUILDER.md` and `cloudflare/RESOURCE_PAGES.md` and `cloudflare/LINK_ROUTING.md`. The user has now included staff features in continuous full-plan execution; see `cloudflare/FULL_PLAN_PROGRESS.md`.  
 Prepared: 16 October 2026.  
 Purpose: extend the existing company platform with reliable analytics, employee business cards, Wallet passes, and campaign services.
 

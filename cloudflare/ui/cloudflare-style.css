@@ -280,3 +280,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 #view-resources .section-heading h2 { flex:1; }
 #view-resources .section-heading .button { flex:none; }
 #resource-publishing { margin-top:20px; padding-top:16px; border-top:1px solid var(--line); }
+
+.routing-dialog { width:min(940px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); padding:20px; border-radius:var(--radius-xl); box-shadow:var(--shadow-elevated); }
+.routing-dialog .button { width:auto; display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; }
+.routing-dialog h2 { margin:0; font-size:22px; font-weight:500; }
+.routing-dialog label { display:block; font-size:12px; margin:12px 0 6px; }
+.routing-dialog .check { font-size:13px; }
+.routing-dialog input { width:100%; min-width:0; }
+.routing-dialog input[type=checkbox] { width:auto; }
+.routing-rule { padding:12px; margin:12px 0; background:var(--theme-paper); }
+.routing-rule .form-grid>div:last-child:has(input[data-routing-field=destination]) { grid-column:1/-1; }
+.routing-test { margin-top:20px; padding:0; border:0; }
+.routing-test summary { cursor:pointer; font-size:13px; padding:8px 0; }
+.routing-test>.button { margin-top:12px; }
+.routing-dialog::backdrop { background:#20202b38; backdrop-filter:blur(6px); }
+@media(max-width:650px) { .routing-dialog { padding:16px; } .routing-dialog .form-grid { grid-template-columns:minmax(0,1fr); } }
+@media(prefers-reduced-transparency:reduce) { .routing-dialog::backdrop { backdrop-filter:none; } }
+
+#routing-enabled, #resource-consent { accent-color:var(--cf-primary-active); }
+#routing-audiences .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media(max-width:650px) { #routing-audiences .form-grid { grid-template-columns:minmax(0,1fr); } }

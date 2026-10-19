@@ -12,6 +12,7 @@ import {
   prune,
   operationalFailure,
 } from "./analytics.mjs";
+import {routingAPI,resolvedLink} from "./routing.mjs";
 import { resourceAPI, publicResource, pruneResources } from "./resources.mjs";
 import { verifyFirebaseToken } from "./auth.mjs";
 import {
@@ -117,7 +118,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
           if (qrRoute) {
             if (!env.DB) fail(503, "Storage unavailable.");
             const row = await env.DB.prepare(
-              "SELECT q.*,l.destination AS link_destination,l.deleted_at AS link_deleted_at FROM tracked_qrs q LEFT JOIN links l ON l.slug=q.link_slug AND l.workspace_id=q.workspace_id WHERE q.id=?",
+              "SELECT q.*,l.destination AS link_destination,l.deleted_at AS link_deleted_at,r.config_json AS routing_json FROM tracked_qrs q LEFT JOIN links l ON l.slug=q.link_slug AND l.workspace_id=q.workspace_id LEFT JOIN link_routing r ON r.slug=l.slug AND r.workspace_id=l.workspace_id AND l.legacy=0 WHERE q.id=?",
             )
               .bind(qrRoute[1])
               .first();
@@ -132,7 +133,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
                 headers: { ...security, "Cache-Control": "no-store" },
               });
             const destination = row.link_slug
-              ? row.link_destination
+              ? resolvedLink({...row,destination:row.link_destination},request,env)
               : row.destination;
             if (!destination)
               return new Response("This destination is unavailable.", {
@@ -150,6 +151,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
                 ...security,
                 Location: checked.destination,
                 "Cache-Control": "no-store",
+                "Vary": "Accept-Language",
               },
             });
             collect(request, env, ctx, {
@@ -163,7 +165,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
           if (redirect) {
             if (!env.DB) fail(503, "Storage unavailable.");
             const row = await env.DB.prepare(
-              "SELECT destination,workspace_id,slug,deleted_at FROM links WHERE slug=?",
+              "SELECT l.destination,l.workspace_id,l.slug,l.deleted_at,r.config_json AS routing_json FROM links l LEFT JOIN link_routing r ON r.slug=l.slug AND r.workspace_id=l.workspace_id AND l.legacy=0 WHERE l.slug=?",
             )
               .bind(redirect[1])
               .first();
@@ -177,8 +179,9 @@ export function createApp(authenticate = verifyFirebaseToken) {
               status: 302,
               headers: {
                 ...security,
-                Location: row.destination,
+                Location: resolvedLink(row,request,env),
                 "Cache-Control": "no-store",
+                "Vary": "Accept-Language",
               },
             });
             collect(request, env, ctx, {
@@ -827,6 +830,8 @@ export function createApp(authenticate = verifyFirebaseToken) {
             },
             201,
           );
+        const routingMatch=path.match(/^\/api\/links\/([a-z0-9-]+)\/routing(?:\/(preview))?$/);
+        if(routingMatch)return json(await routingAPI({slug:routingMatch[1],action:routingMatch[2],method,body:()=>bodyJSON(request),env,wid,user,request}));
         const lm = path.match(/^\/api\/links\/([a-z0-9-]+)$/);
         const restore = path.match(/^\/api\/links\/([a-z0-9-]+)\/restore$/);
         if ((lm && method === "DELETE") || (restore && method === "POST")) {

@@ -292,7 +292,7 @@ function render() {
           $("destination").focus();
         },
       ],
-      ...(!link.legacy ? [["Delete", deleteLink]] : []),
+      ...(!link.legacy ? [["Rules",async()=>{const {openRouting}=await import("./routing.mjs");await openRouting({link,request:api,onSaved:refreshLibrary});}],["Delete", deleteLink]] : []),
     ])) {
       const button = node("button", label === "Delete" ? "danger" : "", label);
       button.onclick = act(fn);
