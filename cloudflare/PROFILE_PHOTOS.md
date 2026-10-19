@@ -23,3 +23,5 @@ Staging migration 0011 and Worker f51ad834-8e5a-4134-be95-78f71005f744 deployed.
 The browser suite also exposed and now covers a QR dialog race: a queued close notification from an earlier opening could clear a newly reopened preview. The close handler ignores that stale notification while the dialog is open.
 
 Rollout: capture D1 Time Travel metadata, apply additive migration 0011, deploy the verified Worker/assets and check foreign keys and private/public gates. Existing links and QR identities stay unchanged. Keep the additive table if rolling back the Worker. No real portrait is inserted into production as a test fixture.
+
+Production migration 0011 and Worker 18776aeb-051a-4093-9920-84ad378c7f14 deployed. Delivered asset hashes match the tested build; foreign-key checks passed; anonymous private photo access returns 401 and an unissued public photo route returns 404.
