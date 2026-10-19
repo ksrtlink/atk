@@ -140,28 +140,18 @@ try {
     ],
   });
   await send("Page.navigate", { url: "http://127.0.0.1:4174/" });
-  await wait("document.getElementById('motion-toggle')");
+  await wait("document.getElementById('hero-create-form')");
   await wait("document.readyState === 'complete'");
   const theme = await ev("({accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),radius:getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()})");
   assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).backgroundColor"), "rgb(255, 94, 31)");
   await shot("landing-desktop");
   await shot("landing-mobile", 390, 844);
-  await click("motion-toggle");
-  assert.equal(
-    await ev("document.body.classList.contains('motion-paused')"),
-    true,
-  );
-  await send("Emulation.setEmulatedMedia", {
-    features: [{ name: "prefers-reduced-motion", value: "reduce" }],
-  });
-  assert.equal(
-    await ev(
-      "getComputedStyle(document.querySelector('.source-box')).animationName",
-    ),
-    "none",
-  );
-  await send("Emulation.setEmulatedMedia", { features: [] });
-  await send("Page.navigate", { url: "http://127.0.0.1:4174/manage/" });
+  await click("hero-qr-tab");
+  assert.equal(await ev("document.getElementById('hero-qr-tab').getAttribute('aria-pressed')"),"true");
+  await fill("hero-url","https://example.com/hero-draft");
+  await ev("document.getElementById('hero-create-form').requestSubmit()");
+  await wait("location.pathname==='/manage/' && document.getElementById('account-dialog')?.open");
+  assert.equal(await ev("JSON.parse(sessionStorage.getItem('tinytrail.create-draft')).tool"),"qr");
   await wait(
     "document.getElementById('notice')?.textContent.includes('Sign in')",
   );
@@ -170,6 +160,18 @@ try {
   assert.equal(await ev("getComputedStyle(document.getElementById('assigned-company')).display"), "none");
   assert.equal(await ev("fetch('/manage/links.json').then(r=>r.status)"), 404);
   await login("alice");
+  await wait("document.getElementById('qr-dialog')?.open");
+  assert.equal(await ev("document.getElementById('qr-url').value"),"https://example.com/hero-draft");
+  await click("qr-close");
+  await send("Page.navigate", {url:"http://127.0.0.1:4174/"});
+  await wait("document.readyState==='complete' && document.getElementById('hero-create-form')");
+  await fill("hero-url","https://example.com/link-draft");
+  await ev("document.getElementById('hero-create-form').requestSubmit()");
+  await wait("location.pathname==='/manage/' && document.getElementById('account-dialog')?.open");
+  await login("alice");
+  await wait("document.getElementById('destination').value==='https://example.com/link-draft'");
+  assert.equal(await ev("document.getElementById('list-count').textContent"),"0");
+  assert.equal(await ev("sessionStorage.getItem('tinytrail.create-draft')"),null);
   await wait("document.getElementById('page-title').textContent.includes('personal')");
   assert.equal(await ev("document.getElementById('open-qr').disabled"),false);
   assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"),"none");
@@ -177,6 +179,16 @@ try {
   await fill("slug","my-private-browser-link");
   await ev("document.getElementById('link-form').requestSubmit()");
   await wait("document.getElementById('links').innerText.includes('my-private-browser-link')");
+  await fill("destination","https://example.com/automatic-name");
+  await fill("slug","");
+  await ev("window.__nativeFetch=window.fetch;window.__dropLinkResponse=true;window.fetch=async(...args)=>{const response=await window.__nativeFetch(...args);if(window.__dropLinkResponse && String(args[0]).endsWith('/api/links') && args[1]?.method==='POST'){window.__dropLinkResponse=false;throw Error('Simulated lost create response');}return response;}");
+  await ev("document.getElementById('link-form').requestSubmit()");
+  await wait("document.getElementById('app-error').innerText.includes('Connection interrupted')");
+  assert.match(await ev("document.getElementById('slug').value"),/^[a-f0-9]{8}$/);
+  await ev("window.fetch=window.__nativeFetch;document.getElementById('link-form').requestSubmit()");
+  await wait("document.getElementById('list-count').textContent==='2'");
+  assert.match(await ev("[...document.querySelectorAll('.link-row')].find(row=>row.innerText.includes('automatic-name')).querySelector('.short-link').href"),/\/r\/[a-f0-9]{8}$/);
+
   await shot("personal-desktop",1440,1000);
   await shot("personal-mobile",390,844);
   await click("request-company");
@@ -336,7 +348,7 @@ try {
     JSON.stringify(
       {
         passed: [
-          "landing desktop/mobile and pause/reduced motion",
+          "landing desktop/mobile, link/QR handoff and automatic short names",
           "anonymous QR blocked and legacy JSON absent",
           "company request and admin approval",
           "admin-only original library",

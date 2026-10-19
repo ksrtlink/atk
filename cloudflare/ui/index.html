@@ -38,7 +38,7 @@
           src="./tinytrail-logo.svg"
           alt="TinyTrail"
           width="170"
-          height="36"
+          height="51"
         /><span class="brand-sub">LINK &amp; QR WORKSPACE</span></a
       >
       <div id="assigned-company" class="company-context hidden">
@@ -93,7 +93,7 @@
             </p>
           </div>
 
-          <button id="open-qr" class="button secondary">Create QR code</button>
+          
         </div>
 
         <p id="notice" class="profile-notice" role="status">
@@ -168,6 +168,56 @@
         </section>
 
         <div id="member-content" class="hidden">
+          <section id="creator-panel" class="creator-panel" aria-label="Create links and QR codes">
+                <form id="link-form" class="composer quick-composer">
+                  
+
+                  <h2 id="form-heading">Create a short link or QR code.</h2>
+
+                  <label for="destination">Paste a destination URL</label
+                  ><input
+                    id="destination"
+                    type="url"
+                    required
+                    maxlength="4096"
+                    placeholder="https://example.com/your-page"
+                  /><label for="slug">Custom name (optional)</label
+                  ><input
+                    id="slug"
+                    maxlength="64"
+                    placeholder="Auto-generated"
+                  />
+
+                  <p class="field-hint">
+                    Choose a name, or leave it blank for a short code.
+                  </p>
+
+                  <div id="preview" class="link-preview"></div>
+
+                  <button id="submit" class="button primary" type="submit">
+                    Shorten link</button
+                  ><button id="open-qr" class="button secondary" type="button">Create QR code</button><button
+                    id="cancel-edit"
+                    class="text-button hidden"
+                    type="button"
+                  >
+                    Cancel editing
+                  </button>
+                </form>
+
+                <section id="result" class="box hidden">
+                  <h2>Ready to share.</h2>
+
+                  <a
+                    id="result-link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  ></a
+                  ><button id="result-qr" class="button secondary">
+                    Design QR code
+                  </button>
+                </section>
+          </section>
           <section
             id="view-analytics"
             class="hidden"
@@ -279,7 +329,7 @@
             </div>
           </section>
           <section id="view-links">
-            <div class="workspace-grid">
+            <div class="workspace-grid library-workspace">
               <div>
                 <div class="section-heading">
                   <h2>Company links <span id="list-count"></span></h2>
@@ -291,8 +341,8 @@
                   <input
                     id="search"
                     type="search"
-                    placeholder="Find a link or destination…"
-                    aria-label="Search company links"
+                    placeholder="Search links…"
+                    aria-label="Search links"
                   /><button id="export" class="button secondary">
                     Export CSV
                   </button>
@@ -307,63 +357,13 @@
                 </p>
               </div>
 
-              <aside>
-                <form id="link-form" class="composer">
-                  <div class="eyebrow">CREATE A CONNECTION</div>
 
-                  <h2 id="form-heading">Make it a short link.</h2>
-
-                  <label for="destination">Destination URL</label
-                  ><input
-                    id="destination"
-                    type="url"
-                    required
-                    maxlength="4096"
-                    placeholder="https://example.com/your-page"
-                  /><label for="slug">Short link name</label
-                  ><input
-                    id="slug"
-                    required
-                    maxlength="64"
-                    placeholder="annual-report"
-                  />
-
-                  <p class="field-hint">
-                    Lowercase letters, numbers, and hyphens.
-                  </p>
-
-                  <div id="preview" class="link-preview"></div>
-
-                  <button id="submit" class="button primary" type="submit">
-                    Create short link</button
-                  ><button
-                    id="cancel-edit"
-                    class="text-button hidden"
-                    type="button"
-                  >
-                    Cancel editing
-                  </button>
-                </form>
-
-                <section id="result" class="box hidden">
-                  <h2>Ready to share.</h2>
-
-                  <a
-                    id="result-link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  ></a
-                  ><button id="result-qr" class="button secondary">
-                    Design QR code
-                  </button>
-                </section>
-              </aside>
             </div>
           </section>
 
           <section id="view-designs" class="hidden">
             <div class="section-heading">
-              <h2>Company QR designs</h2>
+              <h2>Saved QR designs</h2>
 
               <button id="design-new" class="button secondary">
                 Create QR code

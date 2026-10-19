@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       name="description"
-      content="A company workspace for consistent short links, beautifully styled QR codes, and bulk print-ready output."
+      content="Create short links and custom QR codes. Save them in a private personal library or a shared company workspace, with SVG, PNG and JPG exports."
     />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'"
     />
-    <title>TinyTrail | Every link. Every scan. On brand.</title>
+    <title>TinyTrail | Short links &amp; custom QR codes</title>
     <link rel="icon" href="/manage/tinytrail-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/landing.css" />
     <link rel="stylesheet" href="/theme.css" />
@@ -23,8 +23,8 @@
         <a class="logo" href="/" aria-label="TinyTrail home"
           ><img
             src="/manage/tinytrail-logo.svg"
-            width="170"
-            height="36"
+            width="180"
+            height="54"
             alt="TinyTrail"
         /></a>
         <nav aria-label="Main navigation">
@@ -39,80 +39,22 @@
         </div>
       </header>
       <main id="main">
-        <section class="hero">
+        <section class="hero product-hero">
           <div class="hero-copy">
-            <p class="eyebrow">YOUR LINK &amp; QR STUDIO</p>
-            <h1>Every link.<br />Every scan.<br /><span>On brand.</span></h1>
-            <p class="intro">
-              Create personal links and QR codes, or bring your team into one
-              shared, considered workflow.
-            </p>
-            <div class="hero-actions">
-              <a class="button primary" href="/manage/?request=1"
-                >Create free account <span aria-hidden="true">↗</span></a
-              ><a class="button secondary" href="#workflow"
-                >Explore the workflow</a
-              >
-            </div>
-            <p class="hero-note">
-              Start privately. Share through your assigned company when you need to.
-            </p>
+            <p class="eyebrow">SMALL LINKS. STRONG CONNECTIONS.</p>
+            <h1>Short links.<br /><span>Sharp QR codes.</span></h1>
+            <p class="intro">Turn any URL into a short link or a QR code that looks as good as it works. Create, customize, and keep everything in one place.</p>
+            <div class="hero-actions"><a class="button primary" href="/manage/?request=1">Create free account <span aria-hidden="true">↗</span></a><a class="text-link" href="#workflow">See what you can create ↓</a></div>
+            <p class="hero-note">A private library for you. A shared workspace for your team.</p>
           </div>
-          <div
-            class="hero-art"
-            aria-label="Illustration: company destinations become consistent short links and print-ready QR codes"
-          >
-            <div class="art-grid" aria-hidden="true"></div>
-            <div class="connector connector-one" aria-hidden="true"></div>
-            <div class="connector connector-two" aria-hidden="true"></div>
-            <div class="flow-dot flow-dot-one" aria-hidden="true"></div>
-            <div class="flow-dot flow-dot-two" aria-hidden="true"></div>
-            <div class="source-box">
-              <div class="box-title">
-                <span class="file-icon" aria-hidden="true">≡</span>
-                destinations.csv <span class="meta">3 rows</span>
+          <div class="hero-tool-wrap">
+            <div class="hero-tool">
+              <div class="tool-tabs" role="group" aria-label="Choose what to create"><button type="button" id="hero-link-tab" aria-pressed="true">Short link</button><button type="button" id="hero-qr-tab" aria-pressed="false">QR code</button></div>
+              <div class="tool-body"><h2 id="hero-tool-title">Start with a long link.</h2><p id="hero-tool-description">Make it shorter. Keep it easy to share.</p>
+                <form id="hero-create-form"><label for="hero-url">Destination URL</label><input id="hero-url" name="url" type="url" required maxlength="4096" placeholder="https://example.com/your-page" autocomplete="url" spellcheck="false" /><button id="hero-create-submit" class="button primary" type="submit">Shorten a link <span aria-hidden="true">↗</span></button><p id="hero-create-error" class="hero-error" role="alert" hidden></p></form>
+                <p class="tool-signin-note">Continue in your workspace after sign-in. You choose when to create and save.</p>
               </div>
-              <div class="data-row">
-                <span>01</span> Annual report <span>↗</span>
-              </div>
-              <div class="data-row">
-                <span>02</span> Event programme <span>↗</span>
-              </div>
-              <div class="data-row">
-                <span>03</span> Product guide <span>↗</span>
-              </div>
-            </div>
-            <div class="link-box">
-              <span class="signal" aria-hidden="true"></span>
-              <div>
-                <span class="meta">CONSISTENT CONNECTIONS</span
-                ><strong>Your company. One library.</strong>
-              </div>
-              <span aria-hidden="true">↗</span>
-            </div>
-            <div class="print-box">
-              <div class="print-head">
-                <span class="meta">READY FOR THE REAL WORLD</span
-                ><span>SVG / PNG / PDF</span>
-              </div>
-              <div class="qr-cards">
-                <div class="qr-card">
-                  <!--SAMPLE_QR--><span>Annual report</span>
-                </div>
-                <div class="qr-card">
-                  <!--SAMPLE_QR--><span>Event programme</span>
-                </div>
-              </div>
-              <div class="print-foot">
-                <span>Consistent style. Clear borders.</span
-                ><span class="orange">Print ready ↗</span>
-              </div>
-            </div>
-            <div class="art-footer">
-              <span>ILLUSTRATIVE WORKFLOW · EXAMPLE DATA</span
-              ><button id="motion-toggle" aria-pressed="false">
-                Pause animation
-              </button>
+              <div class="tool-qr-feature"><div class="hero-sample-qr" aria-label="Example QR design"><!--SAMPLE_QR--></div><div><strong>Designed for screens.<br />Ready for print.</strong><p>Custom shapes and colors.<br />SVG, PNG, and JPG exports.</p></div></div>
             </div>
           </div>
         </section>

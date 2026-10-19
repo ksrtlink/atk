@@ -936,3 +936,35 @@ footer > a:last-child {
     display: none;
   }
 }
+
+/* Product-first hero; preserves TinyTrail's existing interface palette. */
+.logo img { width:180px; height:auto; }
+.product-hero { grid-template-columns:1.05fr 1fr; min-height:610px; padding:32px 0; align-items:center; background:var(--paper); }
+.product-hero .hero-copy { padding:48px 44px; }
+.product-hero h1 { font-size:clamp(44px,4.6vw,66px); font-weight:650; letter-spacing:-2.8px; line-height:1.07; }
+.product-hero h1 span { color:var(--cf-primary-active); }
+.product-hero .intro { max-width:450px; font-size:17px; }
+.product-hero .hero-actions { align-items:center; gap:24px; }
+.product-hero .hero-note { max-width:400px; line-height:1.6; font-size:12px; }
+.hero-tool-wrap { padding:32px 44px 32px 12px; min-width:0; }
+.hero-tool { border:1px solid var(--line); border-radius:var(--radius); background:var(--paper); box-shadow:0 12px 48px rgba(24,24,27,.04); }
+.tool-tabs { display:flex; gap:24px; padding:0 24px; border-bottom:1px solid var(--line); }
+.tool-tabs button { border:0; border-bottom:2px solid transparent; border-radius:0; padding:18px 0; background:transparent; color:var(--muted); font-size:13px; }
+.tool-tabs button[aria-pressed="true"] { color:var(--ink); border-bottom-color:var(--orange); font-weight:600; }
+.tool-body { padding:26px 24px; }
+.tool-body h2 { font-size:23px; font-weight:600; letter-spacing:-.6px; margin:0 0 9px; }
+.tool-body p { color:var(--muted); font-size:13px; line-height:1.6; }
+#hero-create-form { display:grid; gap:10px; margin-top:22px; }
+#hero-create-form label { font-size:12px; font-weight:500; }
+#hero-url { width:100%; min-width:0; padding:13px 12px; border:1px solid var(--line); border-radius:var(--radius); font:inherit; font-size:14px; background:var(--canvas); color:var(--ink); }
+#hero-create-submit { justify-content:center; padding:13px 16px; }
+.tool-body .tool-signin-note { font-size:11px; line-height:1.6; margin:12px 0 0; }
+.hero-error { color:var(--cf-danger)!important; margin:0; }
+.tool-qr-feature { display:flex; align-items:center; gap:20px; padding:20px 24px; border-top:1px solid var(--line); background:var(--cf-hover); }
+.hero-sample-qr { width:92px; flex-shrink:0; background:white; border:1px solid var(--line); border-radius:var(--radius); }
+.hero-sample-qr svg { width:100%; height:auto; display:block; }
+.tool-qr-feature strong { font-size:15px; line-height:1.4; font-weight:600; }
+.tool-qr-feature p { font-size:12px; line-height:1.6; color:var(--muted); margin:8px 0 0; }
+@media(max-width:1050px) { .product-hero .hero-copy { padding:36px 28px; } .hero-tool-wrap { padding:28px 28px 28px 0; } }
+@media(max-width:760px) { .product-hero { grid-template-columns:minmax(0,1fr); padding:0; } .product-hero .hero-copy { padding:48px 24px 28px; } .product-hero h1 { font-size:52px; letter-spacing:-2px; } .hero-tool-wrap { padding:0 24px 40px; } .hero-tool { max-width:550px; } .header .logo img { width:145px; height:auto; } }
+@media(max-width:480px) { .header .logo img { width:122px; height:auto; } .header-actions>a:first-child { display:none; } .product-hero .hero-copy { padding:36px 20px 28px; } .product-hero h1 { font-size:44px; } .hero-tool-wrap { padding:0 20px 32px; } .product-hero .intro { font-size:16px; } .tool-body { padding:22px 18px; } .tool-tabs { padding:0 18px; } .tool-qr-feature { padding:18px; } #hero-url { font-size:16px; } }

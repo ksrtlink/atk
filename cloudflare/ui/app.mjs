@@ -1,4 +1,4 @@
-import { validateSlug } from "./core.mjs";
+import { validateSlug, validateURL } from "./core.mjs";
 import {
   initializeAuth,
   account,
@@ -107,8 +107,8 @@ function clearLibrary() {
   createKey = null;
   $("link-form").reset();
   $("slug").disabled = false;
-  $("form-heading").textContent = "Make it a short link.";
-  $("submit").textContent = "Create short link";
+  $("form-heading").textContent = "Create a short link or QR code.";
+  $("submit").textContent = "Shorten link";
   $("cancel-edit").classList.add("hidden");
   $("result").classList.add("hidden");
   $("links").replaceChildren();
@@ -173,7 +173,7 @@ function ui() {
           : "Request a company workspace, or accept an invitation from your owner."
         : personal && me?.accessRequest?.status === "pending" ? "Your personal workspace is ready. Company access: pending approval." : "";
   $("workspace-label").textContent = workspace?.name || "Your workspace";
-  $("page-title").textContent = !workspace ? "Your link & QR studio." : personal ? "Your personal link studio." : "Your company’s link studio.";
+  $("page-title").textContent = !workspace ? "Links & QR codes." : personal ? "Your personal links & QR codes." : "Your company’s links & QR codes.";
   $("workspace-description").textContent = personal ? "Private links and QR designs. Ready to share when you are." : "Consistent links. Considered QR codes. Ready for the real world.";
   $("assigned-company").querySelector(".company-context-label").textContent = personal ? "Your private library" : "Your company";
   $("library-contexts").classList.toggle("hidden", !workspace || !me?.workspaces.length);
@@ -195,6 +195,7 @@ function ui() {
     $("access-form").classList.add("hidden");
   }
   $("open-qr").disabled = !workspace;
+  $("creator-panel").classList.toggle("hidden", !workspace || !["links","designs"].includes(view));
   $("transfer-panel").classList.toggle(
     "hidden",
     !workspace ||
@@ -327,12 +328,24 @@ async function load() {
     workspace = available.find(w => w.id === sessionStorage.getItem("tinytrail.workspace")) || me.workspaces.find(w => w.id === me.assignedWorkspaceId) || me.workspaces[0] || me.personalWorkspace;
     if (workspace) $("workspace-select").value = workspace.id;
     ui();
-    if (workspace) await refreshLibrary();
+    if (workspace) { await refreshLibrary(); await resumeCreateDraft(); }
   } catch (e) {
     if (ticket !== epoch) return;
     error(e.message);
     ui();
   }
+}
+async function resumeCreateDraft() {
+  const raw = sessionStorage.getItem("tinytrail.create-draft");
+  if (!raw) return;
+  sessionStorage.removeItem("tinytrail.create-draft");
+  try {
+    const draft = JSON.parse(raw);
+    if (!["link","qr"].includes(draft.tool) || !Number.isFinite(draft.createdAt) || Date.now()-draft.createdAt > 30*60*1000 || draft.createdAt > Date.now()) return;
+    const url = validateURL(draft.url);
+    if (draft.tool === "qr") await openQR(url);
+    else { await setView("links"); $("destination").value=url; $("slug").focus(); }
+  } catch { message("Start again with a valid website URL."); }
 }
 async function refreshLibrary() {
   if (!workspace) return;
@@ -538,6 +551,7 @@ for (const b of document.querySelectorAll("[data-view]"))
 for (const id of ["connect", "account-top"]) $(id).onclick = act(openAccount);
 $("auth-close").onclick = () => $("account-dialog").close();
 $("auth-signout").onclick = () => {
+  sessionStorage.removeItem("tinytrail.create-draft");
   signOut();
   $("account-dialog").close();
 };
@@ -673,10 +687,11 @@ $("link-form").onsubmit = act(async (e) => {
   $("submit").disabled = true;
   try {
     const body = {
-      slug: validateSlug($("slug").value),
+      slug: validateSlug($("slug").value || crypto.randomUUID().replaceAll("-", "").slice(0, 8)),
       destination: $("destination").value,
       ...(editing ? { version: editing.version } : {}),
     };
+    if (!$("slug").value) $("slug").value = body.slug;
     createKey ||= crypto.randomUUID();
     const r = await api(editing ? "/api/links/" + editing.slug : "/api/links", {
       method: editing ? "PATCH" : "POST",
@@ -691,8 +706,8 @@ $("link-form").onsubmit = act(async (e) => {
     $("link-form").reset();
     $("slug").disabled = false;
     $("cancel-edit").classList.add("hidden");
-    $("form-heading").textContent = "Make it a short link.";
-    $("submit").textContent = "Create short link";
+    $("form-heading").textContent = "Create a short link or QR code.";
+    $("submit").textContent = "Shorten link";
     ui();
     await refreshLibrary();
     message("Destination saved.");
@@ -707,8 +722,8 @@ $("cancel-edit").onclick = () => {
   $("link-form").reset();
   $("slug").disabled = false;
   $("cancel-edit").classList.add("hidden");
-  $("form-heading").textContent = "Make it a short link.";
-  $("submit").textContent = "Create short link";
+  $("form-heading").textContent = "Create a short link or QR code.";
+  $("submit").textContent = "Shorten link";
   ui();
 };
 for (const id of ["slug", "destination"])
@@ -718,7 +733,8 @@ for (const id of ["slug", "destination"])
   };
 $("search").oninput = render;
 $("refresh").onclick = act(load);
-for (const id of ["open-qr", "design-new"]) $(id).onclick = act(() => openQR());
+$("open-qr").onclick = act(() => openQR($("destination").value.trim() ? validateURL($("destination").value) : ""));
+$("design-new").onclick = act(() => openQR());
 $("result-qr").onclick = act(() => openQR($("result-link").href));
 export function download(name, blob) {
   const u = URL.createObjectURL(blob),
@@ -751,7 +767,7 @@ try {
   config = await api("/api/config", { auth: false });
   await initializeAuth(config);
   await load();
-  if (!account() && new URLSearchParams(location.search).has("request")) {
+  if (!account() && (new URLSearchParams(location.search).has("request") || new URLSearchParams(location.search).has("create"))) {
     register = true;
     $("auth-register-tab").click();
     openAccount();
