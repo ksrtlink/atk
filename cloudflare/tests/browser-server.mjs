@@ -13,11 +13,12 @@ for (const n of [
   "0001_schema.sql",
   "0002_original_links.sql",
   "0003_enterprise.sql",
-  "0004_analytics.sql", "0005_personal.sql", "0006_link_trash.sql", "0007_resource_pages.sql", "0008_link_routing.sql", "0009_people.sql", "0010_staff_tools.sql", "0011_people_photos.sql", "0012_link_health.sql", "0013_contact_exchange.sql",
+  "0004_analytics.sql", "0005_personal.sql", "0006_link_trash.sql", "0007_resource_pages.sql", "0008_link_routing.sql", "0009_people.sql", "0010_staff_tools.sql", "0011_people_photos.sql", "0012_link_health.sql", "0013_contact_exchange.sql", "0014_activity_audit.sql",
 ])
   sql.exec(await readFile(resolve(root, "migrations/" + n), "utf8"));
-let failAnalytics = false;
+let failAnalytics = false,failActivity=false;
 function prepare(query, args = []) {
+  if(failActivity&&query.startsWith("SELECT a.*")&&query.includes("FROM audit_records")){failActivity=false;throw Error("Injected activity report failure");}
   if (failAnalytics && query.includes("FROM engagement_events"))
     throw Error("Injected report storage failure");
   return {
@@ -148,10 +149,11 @@ createServer(async (req, res) => {
       res.end("Test-only report failure toggled");
       return;
     }
+    if(req.url==="/qa/fail-activity"&&req.method==="POST"){failActivity=true;res.writeHead(200);res.end("ok");return;}
     if (req.url === "/qa/reset" && req.method === "POST") {
       failAnalytics = false;
       sql.exec(
-        "DELETE FROM contact_submission_events; DELETE FROM contact_submissions; DELETE FROM contact_receipts; DELETE FROM contact_abuse_buckets; DELETE FROM contact_campaigns; DELETE FROM contact_settings; DELETE FROM link_health_targets; DELETE FROM link_health; DELETE FROM people_photos; DELETE FROM people_import_rows; DELETE FROM people_events; DELETE FROM people_revisions; DELETE FROM people; DELETE FROM people_imports; DELETE FROM people_templates; DELETE FROM link_routing_revisions; DELETE FROM link_routing; DELETE FROM resource_events; DELETE FROM resource_revisions; DELETE FROM resource_pages; DELETE FROM engagement_events; DELETE FROM analytics_periods; DELETE FROM analytics_settings; DELETE FROM bulk_rows; DELETE FROM bulk_jobs; DELETE FROM presets; DELETE FROM invitations; DELETE FROM access_requests; DELETE FROM memberships; DELETE FROM qr_designs; DELETE FROM tracked_qrs; DELETE FROM links WHERE legacy=0; DELETE FROM workspaces; DELETE FROM users;",
+        "DELETE FROM audit_records; DELETE FROM contact_submission_events; DELETE FROM contact_submissions; DELETE FROM contact_receipts; DELETE FROM contact_abuse_buckets; DELETE FROM contact_campaigns; DELETE FROM contact_settings; DELETE FROM link_health_targets; DELETE FROM link_health; DELETE FROM people_photos; DELETE FROM people_import_rows; DELETE FROM people_events; DELETE FROM people_revisions; DELETE FROM people; DELETE FROM people_imports; DELETE FROM people_templates; DELETE FROM link_routing_revisions; DELETE FROM link_routing; DELETE FROM resource_events; DELETE FROM resource_revisions; DELETE FROM resource_pages; DELETE FROM engagement_events; DELETE FROM analytics_periods; DELETE FROM analytics_settings; DELETE FROM bulk_rows; DELETE FROM bulk_jobs; DELETE FROM presets; DELETE FROM invitations; DELETE FROM access_requests; DELETE FROM memberships; DELETE FROM qr_designs; DELETE FROM tracked_qrs; DELETE FROM links WHERE legacy=0; DELETE FROM workspaces; DELETE FROM users;",
       );
       res.writeHead(200);
       res.end("Reset loopback test database");

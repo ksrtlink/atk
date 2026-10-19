@@ -15,6 +15,7 @@ const $ = (id) => document.getElementById(id);
 let analyticsView = null;
 let resourcesView = null;
 let peopleView = null;
+let activityView = null;
 let healthSummaries = new Map();
 let creatorHidden = false;
 try { creatorHidden = localStorage.getItem("tinytrail.creator-hidden") === "true"; } catch {}
@@ -152,11 +153,14 @@ function clearLibrary() {
   bulk?.reset();
   resourcesView?.reset();
   peopleView?.reset();
+  activityView?.reset();
   analyticsView?.reset();
 }
 let requestCompany = false;
 function ui() {
   const personal = workspace?.kind === "personal";
+  $("activity-nav").classList.toggle("hidden", !workspace || workspace.role!=="owner");
+  if(workspace?.role!=="owner"){activityView?.reset();if(view==="activity")view="links";}
   const user = account();
   $("connect").textContent = user?.email || "Sign in with email";
   $("account-top").textContent = user ? "My account" : "Sign in";
@@ -231,7 +235,7 @@ function ui() {
   $("preview").textContent = editing
     ? editing.shortUrl
     : `${config?.publicOrigin || location.origin}/r/${$("slug").value || "your-name"}`;
-  for (const name of ["links", "designs", "resources", "people", "bulk", "team", "admin", "analytics"])
+  for (const name of ["links", "designs", "resources", "people", "bulk", "team", "admin", "analytics", "activity"])
     $("view-" + name).classList.toggle(
       "hidden",
       view !== name || (name === "admin" ? !me?.platformAdmin : !workspace),
@@ -569,6 +573,10 @@ async function setView(next) {
       });
     }
     await analyticsView.refresh();
+  }
+  if (next === "activity" && workspace?.role==="owner") {
+    if(!activityView){const {mountActivity}=await import("./activity.mjs");activityView=mountActivity({api,act,getState:()=>({user:me?.user,workspace})});}
+    await activityView.refresh();
   }
   if (next === "people" && workspace) {
     if (!peopleView) {const {mountPeople}=await import("./people.mjs");peopleView=mountPeople({api,act,message,onQR:url=>openQR(url,null,{staticOnly:true})});}

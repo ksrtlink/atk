@@ -16,6 +16,7 @@ The user explicitly included staff features on 19 October 2026. This checklist p
 | Google Wallet | Pending issuer onboarding/credentials and actual Android validation |
 | Contact exchange/events/inbox/export | Implementation prepared: migration 0013, signed voluntary forms, validated event links, scoped inbox/review/delete/CSV, abuse limits and independent retention; 111 registered tests, browser checks and deployed-runtime/D1 checks passed. Production migration 0013 and Worker 9cebe0e0-71c2-4d65-adb2-ca1ad2d7127c deployed with public collection disabled pending separate policy approval; CONTACT_EXCHANGE.md |
 | CRM integration | Pending actual company-selected provider, authorized credentials and retry/deletion acceptance checks |
+| Owner activity records | Implemented: metadata-only transactional audit records, owner-only Activity view and private cursor API, pause-aware rollback and 90-day retention; 122 registered tests, desktop/mobile and deployed D1 trigger/rollback/index checks passed. Production migration 0014 and Worker 48cf955c-60ae-4b59-93c1-3461464723d5 deployed; ACTIVITY_AUDIT.md |
 | Monitoring and notifications | Operational health/runbooks required for each release; external recipients/channels require explicit authorization |
 
 Keep the main IMPLEMENTATION_PLAN.md acceptance gates and compatibility/security rules. Do not claim Wallet/CRM is working without provider/device evidence. Continue independent work when provider setup is missing.

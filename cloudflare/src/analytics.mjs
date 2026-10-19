@@ -164,7 +164,7 @@ export async function collectionSettings(env, wid) {
     bestEffort: true,
   };
 }
-export async function changeSettings(env, wid, role, enabled) {
+export async function changeSettings(env, wid, role, enabled, actorUid=null) {
   if (role !== "owner")
     bad(403, "Only company owners can change collection.", "forbidden");
   if (typeof enabled !== "boolean") bad(400, "Choose enabled or disabled.");
@@ -187,9 +187,10 @@ export async function changeSettings(env, wid, role, enabled) {
         wid,
       ),
       s(
-        "UPDATE analytics_settings SET enabled=1,tracking_since=COALESCE(tracking_since,?),updated_at=? WHERE workspace_id=?",
+        "UPDATE analytics_settings SET enabled=1,tracking_since=COALESCE(tracking_since,?),updated_at=?,updated_by=? WHERE workspace_id=?",
         now,
         now,
+        actorUid,
         wid,
       ),
     ]);
@@ -201,9 +202,10 @@ export async function changeSettings(env, wid, role, enabled) {
         wid,
       ),
       s(
-        "INSERT INTO analytics_settings(workspace_id,enabled,tracking_since,updated_at) VALUES(?,0,NULL,?) ON CONFLICT(workspace_id) DO UPDATE SET enabled=0,updated_at=excluded.updated_at",
+        "INSERT INTO analytics_settings(workspace_id,enabled,tracking_since,updated_at,updated_by) VALUES(?,0,NULL,?,?) ON CONFLICT(workspace_id) DO UPDATE SET enabled=0,updated_at=excluded.updated_at,updated_by=excluded.updated_by",
         wid,
         now,
+        actorUid,
       ),
     ]);
   return collectionSettings(env, wid);
@@ -315,7 +317,7 @@ export async function createTracked(env, wid, user, body, request) {
   if (!row) bad(429, "Company tracked QR allowance reached.", "quota");
   return qrRecord(env, row);
 }
-export async function updateTracked(env, wid, body, id, request) {
+export async function updateTracked(env, wid, body, id, request, actorUid=null) {
   if (!uuid(id) || !Number.isInteger(body.version))
     bad(400, "Provide the saved tracking ID and version.");
   const { first } = dbHelpers(env.DB),
@@ -333,10 +335,11 @@ export async function updateTracked(env, wid, body, id, request) {
   if (!["active", "disabled"].includes(state))
     bad(400, "Choose active or disabled.");
   const row = await first(
-    "UPDATE tracked_qrs SET link_slug=?,destination=?,state=?,version=version+1,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND workspace_id=? AND version=? RETURNING *",
+    "UPDATE tracked_qrs SET link_slug=?,destination=?,state=?,updated_by=?,version=version+1,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND workspace_id=? AND version=? RETURNING *",
     t.linkSlug,
     t.destination,
     state,
+    actorUid,
     id,
     wid,
     body.version,
@@ -666,11 +669,11 @@ export function reportCSV(report) {
   ];
   return "\ufeff" + rows.map((r) => r.map(csvCell).join(",")).join("\r\n");
 }
-export async function prune(env) {
+export async function prune(env,{batches=10}={}) {
   if (!env.DB) return;
   const { s, first } = dbHelpers(env.DB),
     cutoff = Date.now() - flags(env).retentionDays * DAY;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < Math.min(10,Math.max(1,batches)); i++) {
     const result = await s(
       "DELETE FROM engagement_events WHERE id IN (SELECT id FROM engagement_events WHERE occurred_at<? ORDER BY occurred_at LIMIT 1000)",
       cutoff,

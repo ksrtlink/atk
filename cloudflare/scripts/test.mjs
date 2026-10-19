@@ -12,3 +12,4 @@ await import("../tests/health-net.test.mjs");
 await import("../tests/health.test.mjs");
 
 await import("../tests/contact-exchange.test.mjs");
+await import("../tests/audit.test.mjs");

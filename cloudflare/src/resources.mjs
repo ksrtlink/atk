@@ -120,8 +120,8 @@ export async function publicResource(request,env,ctx) {
  const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${e(content.title)} · TinyTrail</title><link rel="icon" href="/manage/tinytrail-icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/resource-page.css"></head><body><a class="skip" href="#resources">Skip to resources</a><div class="resource-public"><header><a href="/"><img src="/manage/tinytrail-logo.svg" alt="TinyTrail" width="142" height="43"></a></header><main id="resources"><h1>${e(content.title)}</h1>${content.description?`<p class="resource-intro">${e(content.description)}</p>`:""}<div class="resource-public-links">${content.items.map(item=>`<a class="resource-public-link" href="/p/${e(row.slug)}/go/${e(item.id)}"><span><strong>${e(item.label)}</strong>${item.description?`<span>${e(item.description)}</span>`:""}</span><span aria-hidden="true">↗</span></a>`).join("")}</div></main><footer>Published with <a href="/">TinyTrail</a></footer></div></body></html>`;
  return new Response(request.method==="HEAD"?null:html,{headers:{...publicHeaders,"Content-Type":"text/html;charset=utf-8","Content-Security-Policy":"default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}});
 }
-export async function pruneResources(env) {
+export async function pruneResources(env,{batches=10}={}) {
  if(!env.DB)return;
  const cutoff=Date.now()-flags(env).retentionDays*DAY;
- for(let i=0;i<10;i++) {const result=await db(env).s("DELETE FROM resource_events WHERE id IN (SELECT id FROM resource_events WHERE occurred_at<? ORDER BY occurred_at LIMIT 1000)",cutoff).run();if((result.meta?.changes??result.changes??0)<1000)break;}
+ for(let i=0;i<Math.min(10,Math.max(1,batches));i++) {const result=await db(env).s("DELETE FROM resource_events WHERE id IN (SELECT id FROM resource_events WHERE occurred_at<? ORDER BY occurred_at LIMIT 1000)",cutoff).run();if((result.meta?.changes??result.changes??0)<1000)break;}
 }

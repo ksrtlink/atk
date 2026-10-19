@@ -295,7 +295,7 @@ try {
   assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"),"none");
   await click("sidebar-toggle");
   assert.equal(await ev("document.body.classList.contains('sidebar-collapsed')"), true);
-  assert.equal(await ev("document.querySelectorAll('.enterprise-nav .ui-icon use').length"), 8);
+  assert.equal(await ev("document.querySelectorAll('.enterprise-nav .ui-icon use').length"), 9);
   await click("sidebar-toggle");
   await fill("destination", "https://example.com/retained-draft");
   await click("creator-toggle");
@@ -629,6 +629,13 @@ try {
   await click("resource-unpublish");
   await wait("document.getElementById('resource-publish-note').textContent.includes('Private draft')");
   assert.equal(await ev(`fetch(${JSON.stringify(resourceURL)}).then(r=>r.status)`),410);
+  assert.equal(await ev("document.getElementById('activity-nav').classList.contains('hidden')"),false);
+  await ev("(async()=>{const {api}=await import('/manage/app.mjs');let r=await api('/api/links',{method:'POST',key:crypto.randomUUID(),body:{slug:'activity-demo',title:'Private title',destination:'https://example.com/activity?token=LOCAL-ONLY-SENSITIVE'}});for(let i=0;i<55;i++)r=await api('/api/links/activity-demo',{method:'PATCH',body:{version:r.link.version,title:'Private iteration '+i,destination:'https://example.com/activity?token=LOCAL-ONLY-SENSITIVE'}});})()");
+  await click("activity-nav");await wait("document.querySelectorAll('#activity-rows tr').length===50");assert.equal(await ev("document.getElementById('view-activity').textContent.includes('LOCAL-ONLY-SENSITIVE')"),false);
+  await fill("activity-type","link");await ev("document.getElementById('activity-type').dispatchEvent(new Event('change'))");await wait("document.querySelectorAll('#activity-rows tr').length===50 && !document.getElementById('activity-next').disabled");
+  await shot("activity-desktop");await shot("activity-mobile",390,844);await click("activity-next");await wait("!document.getElementById('activity-prev').disabled && document.getElementById('activity-next').disabled");assert.equal(await ev("document.querySelectorAll('#activity-rows tr').length>0"),true);await click("activity-prev");await wait("document.querySelectorAll('#activity-rows tr').length===50");
+  await ev("fetch('/qa/fail-activity',{method:'POST'})");await click("activity-refresh");await wait("!document.getElementById('activity-error').classList.contains('hidden')");assert.equal(await ev("document.getElementById('activity-rows').childElementCount"),0);await click("activity-refresh");await wait("document.querySelectorAll('#activity-rows tr').length===50");
+  await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await logout();
   assert.equal(
     await ev("document.getElementById('links').childElementCount"),
@@ -639,11 +646,13 @@ try {
   assert.equal(await ev("document.getElementById('resource-title').value"), "");
   assert.equal(await ev("document.getElementById('resource-items').childElementCount"), 0);
   assert.equal(await ev("document.getElementById('people-name')?.value || ''"), "");
+  assert.equal(await ev("document.getElementById('activity-rows')?.childElementCount||0"),0);assert.equal(await ev("document.getElementById('activity-nav').classList.contains('hidden')"),true);
   assert.equal(errors.length, 0, JSON.stringify(errors));
   console.log(
     JSON.stringify(
       {
         passed: [
+          "owner-only activity, private metadata, filters/paging, error recovery, desktop/mobile layout and sign-out clearing",
           "voluntary contact form, consent, event attribution, owner inbox, review/delete, CSV and mobile layout",
           "owner monitoring controls, all routing targets, resumable checks, UTC results and mobile layout",
           "portrait upload/crop, private photo drafts, published snapshot preservation and mobile editor",

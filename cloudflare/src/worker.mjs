@@ -1,3 +1,4 @@
+import {auditAPI,pruneAudit} from "./audit.mjs";
 import {
   collect,
   flags,
@@ -477,6 +478,7 @@ export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkT
           if (membership.role !== "owner")
             fail(403, "Company owner access is required.", "forbidden");
         };
+        if (path === "/api/activity") return json(await auditAPI({env,wid,role:membership.role,method,params:url.searchParams}));
         if (path === "/api/analytics/settings" && method === "GET")
           return json(await collectionSettings(env, wid));
         if (path === "/api/analytics/settings" && method === "POST")
@@ -486,6 +488,7 @@ export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkT
               wid,
               membership.role,
               (await bodyJSON(request)).enabled,
+              user.uid,
             ),
           );
         if (path === "/api/analytics" && method === "GET") {
@@ -548,6 +551,7 @@ export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkT
               await bodyJSON(request),
               qm[1],
               request,
+              user.uid,
             ),
           });
         const maxLinks = isPersonal ? 25 : limit(env.MAX_LINKS_PER_WORKSPACE),
@@ -1169,7 +1173,7 @@ export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkT
       }
     },
     async scheduled(controller, env, ctx) {
-      const task = controller?.cron==="*/5 * * * *"?scheduledHealth(env,healthCheck).catch(()=>operationalFailure("link_health_run")):Promise.all([pruneContacts(env).catch(()=>operationalFailure("contact_retention_prune")),prunePeople(env).catch(()=>operationalFailure("people_retention_prune")),prune(env).catch(() => operationalFailure("retention_prune")),pruneResources(env).catch(() => operationalFailure("resource_retention_prune"))]);
+      const task = controller?.cron==="*/5 * * * *"?scheduledHealth(env,healthCheck).catch(()=>operationalFailure("link_health_run")):Promise.all([pruneAudit(env,{batches:2}).catch(()=>operationalFailure("audit_retention_prune")),pruneContacts(env,{batches:2}).catch(()=>operationalFailure("contact_retention_prune")),prunePeople(env,{batches:2}).catch(()=>operationalFailure("people_retention_prune")),prune(env,{batches:2}).catch(() => operationalFailure("retention_prune")),pruneResources(env,{batches:2}).catch(() => operationalFailure("resource_retention_prune"))]);
       if (ctx?.waitUntil) ctx.waitUntil(task);
       else await task;
     },
