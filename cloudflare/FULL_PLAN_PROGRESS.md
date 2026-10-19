@@ -20,3 +20,5 @@ The user explicitly included staff features on 19 October 2026. This checklist p
 | Monitoring and notifications | Operational health/runbooks required for each release; external recipients/channels require explicit authorization |
 
 Keep the main IMPLEMENTATION_PLAN.md acceptance gates and compatibility/security rules. Do not claim Wallet/CRM is working without provider/device evidence. Continue independent work when provider setup is missing.
+
+Remaining provider/policy/device gates were revalidated on 20 October 2026: issuer/class configuration is absent, production Wallet secrets are not provisioned, contact collection is off, and CRM is unselected. See REMAINING_ACCEPTANCE.md for exact unfinished implementation and required inputs. No remaining provider/device acceptance gate is marked complete.
