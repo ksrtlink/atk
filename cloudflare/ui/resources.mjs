@@ -21,6 +21,7 @@ export function mountResources({api,act,message,getState,onQR}) {
   $("resource-qr").disabled=selected?.state!=="published";
   $("resource-copy").disabled=selected?.state!=="published";
   $("resource-add").disabled=items.length>=30;
+  for(const id of["resource-save","resource-publish","resource-qr","resource-copy"])$(id).dataset.locked=String($(id).disabled);
   preview();
  }
  function preview() {

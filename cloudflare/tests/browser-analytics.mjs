@@ -190,7 +190,7 @@ try {
   await send("Network.enable");
   await send("Network.setCacheDisabled", { cacheDisabled: true });
   await send("Page.addScriptToEvaluateOnNewDocument", {
-    source: "sessionStorage.removeItem('link-studio.account')",
+    source: "sessionStorage.removeItem('link-studio.account');sessionStorage.removeItem('tinytrail.workspace')",
   });
   await send("Fetch.enable", {
     patterns: [

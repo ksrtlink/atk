@@ -131,7 +131,7 @@ export async function shot(name, width = 1440, height = 1000) {
 try {
   await send("Page.enable");
   await send("Page.addScriptToEvaluateOnNewDocument", {
-    source: "sessionStorage.removeItem('link-studio.account')",
+    source: "sessionStorage.removeItem('link-studio.account');sessionStorage.removeItem('tinytrail.workspace')",
   });
   await send("Runtime.enable");
   await send("Network.enable");
@@ -368,8 +368,30 @@ try {
   assert.deepEqual(await ev("({accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),radius:getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()})"), theme);
   const forged = await ev(`fetch('/api/links',{headers:{Authorization:${JSON.stringify("Bearer " + tokens.alice.idToken)},'X-Workspace-Id':'tinytrail-internal'}}).then(r=>r.status)`);
   assert.equal(forged,403);
+  await ev("document.querySelector('[data-view=people]').click()");
+  await wait("document.getElementById('staff-template-form') && !document.getElementById('people-company-tools').classList.contains('hidden')");
+  await ev("document.getElementById('staff-template').open=true");await fill("staff-template-organization","Northstar Company");
+  await ev("document.querySelector('#staff-template-permissions input[value=intro]').checked=true;document.getElementById('staff-template-form').requestSubmit()");
+  await wait("document.getElementById('toast')?.textContent.includes('template saved')");
+  await click("people-new");assert.equal(await ev("document.getElementById('people-organization').value"),"Northstar Company");
+  await ev("window.__confirm=window.confirm;window.confirm=()=>true");await click("people-close");await ev("window.confirm=window.__confirm;delete window.__confirm");
+  await ev("document.getElementById('staff-import').open=true");
+  await fill("staff-csv","slug,name,email,employeeEmail\nbad-row,Person,bad,unknown@example.com");await click("staff-preview");await wait("document.getElementById('staff-import-status').textContent.includes('1 errors')");assert.equal(await ev("document.getElementById('staff-start').disabled"),true);
+  const staffCSV="slug,name,email\n"+Array.from({length:12},(_,i)=>`import-person-${i},${i===0?'=2+2':'Person '+i},person${i}@example.com`).join("\n");
+  await fill("staff-csv",staffCSV);await click("staff-preview");await wait("document.getElementById('staff-import-status').textContent==='12 rows · 0 errors'");
+  await fill("staff-csv",staffCSV+"\n");assert.equal(await ev("document.getElementById('staff-start').disabled"),true);await click("staff-preview");await wait("!document.getElementById('staff-start').disabled");
+  await click("staff-start");await wait("document.getElementById('staff-import-status').textContent==='10 created · 2 pending · 0 failed'");await click("staff-continue");await wait("document.getElementById('staff-import-status').textContent==='12 created · 0 pending · 0 failed'");
+  await wait("document.getElementById('staff-continue').disabled && document.getElementById('staff-start').disabled");
+  assert.equal(await ev("fetch('/people/import-person-0').then(r=>r.status)"),404);
+  await ev("window.__staffBlob=null;window.__staffObjectURL=URL.createObjectURL;URL.createObjectURL=function(b){window.__staffBlob=b;return window.__staffObjectURL(b)}");await click("staff-export");await wait("!!window.__staffBlob");assert.ok((await ev("window.__staffBlob.text()")).includes("'=2+2"));await ev("URL.createObjectURL=window.__staffObjectURL;delete window.__staffObjectURL;delete window.__staffBlob");
+  await shot("staff-import-desktop");await shot("staff-import-mobile",390,844);await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await ev("document.querySelector('[data-view=links]').click()");
+
   await click("personal-open");
   await wait("document.getElementById('page-title').textContent.includes('personal') && document.getElementById('links').innerText.includes('my-private-browser-link')");
+  assert.equal(await ev("document.getElementById('staff-csv').value"), "");
+  assert.equal(await ev("document.getElementById('staff-import-history').childElementCount"), 0);
+  assert.equal(await ev("document.getElementById('people-company-tools').classList.contains('hidden')"), true);
   await click("open-qr");
   await wait("document.getElementById('qr-dialog')?.open");
   await ev("document.getElementById('qr-mode').value='static';document.getElementById('qr-mode').dispatchEvent(new Event('change'))");
@@ -564,6 +586,7 @@ try {
     JSON.stringify(
       {
         passed: [
+          "company card templates, employee CSV validation/invalidation, resumable imports, formula-safe results and mobile layout",
           "contact-card creation/publication, private drafts, vCard download, stable profile QR and mobile editor",
           "schedule timezone conversion, rule preview precedence, saved audience rules and mobile editor",
     "resource drafts/public snapshots, publication, mobile pages, decoded page QR and unpublish",

@@ -5,3 +5,4 @@ await import('../tests/utm.test.mjs');
 await import('../tests/resources.test.mjs');
 await import('../tests/routing.test.mjs');
 await import("../tests/people.test.mjs");
+await import("../tests/staff-tools.test.mjs");

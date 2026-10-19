@@ -26,8 +26,10 @@ QR visits, page views, contact downloads and action clicks are separately labele
 
 Staging Worker 09b418a9-6e5d-46b0-ac54-3320334f48de served the profile document, vCard, QR redirect and saved action correctly. Anonymous private APIs returned 401. Synthetic opt-in events reconciled to one each of view/download/action/QR; HEAD requests added none. Public desktop/mobile layouts fit and the accent button has white text. Synthetic fixtures were removed.
 
+Production migration 0009 and Worker a83a4f31-c456-48ac-8d90-e6e2be7356ac deployed; delivered assets, private API guards, missing public route and foreign-key checks passed.
+
 ## Still required for full Release 2/3 completion
 
-This is a functional foundation, not a claim that every staff acceptance gate is complete. Photo uploads need an explicitly configured, validated storage path. Company templates, bulk employee import and distribution tools remain follow-ups. Actual iPhone and Android vCard import (including non-Latin names, punctuation and long/multiple fields) must be checked with recorded device/browser versions. Automated serialization and browser download checks do not replace those checks. Apple/Google Wallet integrations require issuer setup and real-device validation; no placeholder Wallet buttons are shipped.
+This is a functional foundation, not a claim that every staff acceptance gate is complete. Photo uploads need an explicitly configured, validated storage path. Company templates and bulk employee import are implemented in STAFF_TOOLS.md; distribution tools remain follow-ups. Actual iPhone and Android vCard import (including non-Latin names, punctuation and long/multiple fields) must be checked with recorded device/browser versions. Automated serialization and browser download checks do not replace those checks. Apple/Google Wallet integrations require issuer setup and real-device validation; no placeholder Wallet buttons are shipped.
 
 Recovery: capture a D1 Time Travel bookmark before production migration 0009. If needed deploy the prior Worker to remove the new UI/routes while retaining additive tables and records; do not drop staff tables as rollback.

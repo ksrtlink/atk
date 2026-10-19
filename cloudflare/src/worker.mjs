@@ -12,6 +12,7 @@ import {
   prune,
   operationalFailure,
 } from "./analytics.mjs";
+import {staffToolsAPI} from "./staff-tools.mjs";
 import {peopleAPI,publicPerson,prunePeople} from "./people.mjs";
 import {routingAPI,resolvedLink} from "./routing.mjs";
 import { resourceAPI, publicResource, pruneResources } from "./resources.mjs";
@@ -458,6 +459,8 @@ export function createApp(authenticate = verifyFirebaseToken) {
           membership = isPersonal ? personal : memberships.find((w) => w.id === wid);
         if (!membership || (!isPersonal && !admin && assigned?.id !== wid))
           fail(403, "Your account does not have access to this company. Contact your administrator.", "membership");
+        if (path === "/api/people-template" || path === "/api/people-imports" || path.startsWith("/api/people-imports/"))
+          return json(await staffToolsAPI({path,method,request,env,wid,user,role:membership.role,personal:isPersonal,body:()=>bodyJSON(request)}));
         if (path === "/api/people" || path.startsWith("/api/people/"))
           return json(await peopleAPI({path,method,request,env,wid,user,role:membership.role,personal:isPersonal,body:()=>bodyJSON(request)}));
         if (path === "/api/resources" || path.startsWith("/api/resources/"))
