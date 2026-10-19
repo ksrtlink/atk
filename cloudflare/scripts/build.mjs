@@ -19,6 +19,7 @@ for (const file of ["kearney-logo.svg", "links.json"])
   await rm(new URL(file, output), { force: true });
 for (const file of [
   "app.mjs",
+  "utm.mjs",
   "auth.mjs",
   "accounts.css",
   "tinytrail.css",

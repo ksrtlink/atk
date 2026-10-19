@@ -227,10 +227,27 @@ try {
   assert.equal(await ev("document.getElementById('creator-panel').classList.contains('hidden')"), true);
   await click("creator-toggle");
   assert.equal(await ev("document.getElementById('destination').value"), "https://example.com/retained-draft");
-  await fill("destination","https://example.com/personal");
+  await fill("destination","https://example.com/personal?x=one%20two&x=2&utm_source=existing#details");
+  await ev("document.querySelector('#link-utm details').open=true");
+  await fill("link-utm-source", "newsletter");
+  await fill("link-utm-medium", "email");
+  await fill("link-utm-campaign", "October launch");
+  assert.ok(await ev("document.getElementById('link-utm-preview').textContent.includes('utm_source=existing')"));
+  await fill("link-utm-policy", "replace");
+  const taggedDestination = await ev("document.getElementById('link-utm-preview').textContent");
+  assert.equal(taggedDestination, "https://example.com/personal?x=one%20two&x=2&utm_source=newsletter&utm_medium=email&utm_campaign=October+launch#details");
+  await shot("campaign-builder-desktop",1440,1000);
+  await shot("campaign-builder-mobile",390,844);
+  await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await click("open-qr");
+  await wait("document.getElementById('qr-dialog')?.open");
+  assert.equal(await ev("document.getElementById('qr-url').value"),taggedDestination);
+  await click("qr-close");
   await fill("slug","my-private-browser-link");
   await ev("document.getElementById('link-form').requestSubmit()");
   await wait("document.getElementById('links').innerText.includes('my-private-browser-link')");
+  assert.equal(await ev("[...document.querySelectorAll('.link-row')].find(r=>r.innerText.includes('my-private-browser-link')).querySelector('.destination').textContent"),taggedDestination);
+  assert.equal(await ev("document.getElementById('link-utm-source').value"), "");
   await fill("destination","https://example.com/automatic-name");
   await fill("slug","");
   await ev("window.__nativeFetch=window.fetch;window.__dropLinkResponse=true;window.fetch=async(...args)=>{const response=await window.__nativeFetch(...args);if(window.__dropLinkResponse && String(args[0]).endsWith('/api/links') && args[1]?.method==='POST'){window.__dropLinkResponse=false;throw Error('Simulated lost create response');}return response;}");
@@ -345,9 +362,11 @@ try {
   await click("qr-close");
   await ev("document.querySelector('[data-view=bulk]').click()");
   await wait("document.getElementById('batch-dots')");
+  await fill("bulk-utm-source", "newsletter");
+  await fill("bulk-utm-campaign", "batch-launch");
   await fill(
     "bulk-input",
-    "title,url,slug\nAnnual report,https://example.com/report,annual-report\nProduct guide,https://example.com/guide,product-guide",
+    "title,url,slug,utm_source\nAnnual report,https://example.com/report,annual-report,poster\nProduct guide,https://example.com/guide,product-guide,",
   );
   await click("bulk-preview");
   await wait("!document.getElementById('bulk-create').disabled");
@@ -356,6 +375,10 @@ try {
     "document.getElementById('bulk-status').textContent.includes('2 created')",
   );
   await wait("!document.getElementById('bulk-zip').disabled");
+  await wait("[...document.querySelectorAll('.link-row .destination')].some(x=>x.textContent.includes('utm_campaign=batch-launch'))");
+  const savedBatchURLs=await ev("[...document.querySelectorAll('.link-row .destination')].map(x=>x.textContent)");
+  assert.ok(savedBatchURLs.includes("https://example.com/report?utm_source=poster&utm_campaign=batch-launch"));
+  assert.ok(savedBatchURLs.includes("https://example.com/guide?utm_source=newsletter&utm_campaign=batch-launch"));
   await shot("enterprise-bulk", 1440, 1000);
   const downloadDir = new URL(
     "../../.qa/enterprise-downloads-" + Date.now() + "/",
@@ -405,6 +428,7 @@ try {
     "Export files verified at " + decodeURIComponent(downloadDir.pathname),
   );
 
+  await ev("document.querySelector('#bulk-utm .text-button').click()");
   await fill("bulk-mode", "qr");
   await fill("bulk-input", "https://example.com/report?regions=emea,apac");
   await click("bulk-preview");
@@ -415,6 +439,17 @@ try {
     ),
     "https://example.com/report?regions=emea,apac",
   );
+  await ev("document.querySelector('#bulk-utm details').open=true");
+  await fill("bulk-utm-source", "shared");
+  await fill("bulk-utm-medium", "qr");
+  assert.equal(await ev("document.getElementById('bulk-create').disabled"),true);
+  await fill("bulk-input", "title,url,utm_source,utm_campaign\nOne,https://example.com/one?keep=a%20b#top,row-source,launch\nTwo,https://example.com/two,,launch");
+  await click("bulk-preview");
+  await wait("!document.getElementById('bulk-create').disabled");
+  const campaignRows=await ev("[...document.querySelectorAll('#bulk-preview-table input[aria-label=url]')].map(x=>x.value)");
+  assert.equal(campaignRows[0],"https://example.com/one?keep=a%20b&utm_source=row-source&utm_medium=qr&utm_campaign=launch#top");
+  assert.equal(campaignRows[1],"https://example.com/two?utm_source=shared&utm_medium=qr&utm_campaign=launch");
+  await shot("campaign-bulk-desktop",1440,1000);
   await ev("document.querySelector('[data-view=links]').click()");
   await shot("enterprise-desktop", 1440, 1000);
   await shot("enterprise-mobile", 390, 844);
@@ -424,12 +459,14 @@ try {
     0,
   );
   assert.equal(await ev("document.getElementById('qr-url').value"), "");
+  assert.equal(await ev("document.getElementById('bulk-utm-source').value"), "");
   assert.equal(errors.length, 0, JSON.stringify(errors));
   console.log(
     JSON.stringify(
       {
         passed: [
-          "white accent actions, solo navigation, link deletion cancel/confirm/Trash/restore",
+          "campaign URL preview, keep/replace, individual link/QR destinations, CSV overrides and preview invalidation",
+    "white accent actions, solo navigation, link deletion cancel/confirm/Trash/restore",
     "layered theme, sidebar icons and collapse, creation panel hides without losing input",
     "QR tabs support keyboard arrows, soft selection, hide preview, minimize/resume",
     "minimized QR draft is discarded when changing workspace",

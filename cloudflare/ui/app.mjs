@@ -1,3 +1,4 @@
+import { mountCampaignBuilder } from "./utm.mjs";
 import { validateSlug, validateURL } from "./core.mjs";
 import {
   initializeAuth,
@@ -33,6 +34,7 @@ let config,
   busy = false,
   createKey = null,
   bulk = null;
+const linkCampaign = mountCampaignBuilder($("link-utm"), {prefix:"link-utm",getURL:()=>$("destination").value,onChange:()=>{createKey=null;}});
 export function message(value) {
   $("toast").textContent = value;
   $("toast").classList.remove("hidden");
@@ -111,6 +113,7 @@ function clearLibrary() {
   editing = null;
   createKey = null;
   $("link-form").reset();
+  linkCampaign.reset();
   $("slug").disabled = false;
   $("form-heading").textContent = "Create a link or QR code.";
   $("submit").textContent = "Shorten link";
@@ -275,6 +278,7 @@ function render() {
         "Edit",
         () => {
           creatorHidden = false;
+          linkCampaign.reset();
           editing = link;
           $("slug").value = link.slug;
           $("slug").disabled = true;
@@ -717,7 +721,7 @@ $("link-form").onsubmit = act(async (e) => {
   try {
     const body = {
       slug: validateSlug($("slug").value || crypto.randomUUID().replaceAll("-", "").slice(0, 8)),
-      destination: $("destination").value,
+      destination: validateURL(linkCampaign.build()),
       ...(editing ? { version: editing.version } : {}),
     };
     if (!$("slug").value) $("slug").value = body.slug;
@@ -733,6 +737,7 @@ $("link-form").onsubmit = act(async (e) => {
     editing = null;
     createKey = null;
     $("link-form").reset();
+  linkCampaign.reset();
     $("slug").disabled = false;
     $("cancel-edit").classList.add("hidden");
     $("form-heading").textContent = "Create a link or QR code.";
@@ -749,6 +754,7 @@ $("cancel-edit").onclick = () => {
   editing = null;
   createKey = null;
   $("link-form").reset();
+  linkCampaign.reset();
   $("slug").disabled = false;
   $("cancel-edit").classList.add("hidden");
   $("form-heading").textContent = "Create a link or QR code.";
@@ -758,6 +764,7 @@ $("cancel-edit").onclick = () => {
 for (const id of ["slug", "destination"])
   $(id).oninput = () => {
     createKey = null;
+    linkCampaign.update();
     ui();
   };
 $("search").oninput = render;
@@ -778,7 +785,7 @@ $("qr-resume").onclick = act(async () => {
   const { resumeQRBuilder } = await import("./qr-builder.mjs");
   resumeQRBuilder();
 });
-$("open-qr").onclick = act(() => openQR($("destination").value.trim() ? validateURL($("destination").value) : ""));
+$("open-qr").onclick = act(() => openQR($("destination").value.trim() ? validateURL(linkCampaign.build()) : ""));
 $("design-new").onclick = act(() => openQR());
 $("result-qr").onclick = act(() => openQR($("result-link").href));
 export function download(name, blob) {

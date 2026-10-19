@@ -1,3 +1,4 @@
+import { campaignURL, mountCampaignBuilder, UTM_FIELDS } from "./utm.mjs";
 import { qrOptions, colorQuality } from "./qr-core.mjs";
 import { validateSlug } from "./core.mjs";
 const $ = (id) => document.getElementById(id),
@@ -73,6 +74,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
     generation = 0,
     previewTicket = 0,
     createId = null;
+  const campaign = mountCampaignBuilder($("bulk-utm"), {prefix:"bulk-utm",onChange:invalidate});
   const field = (id, label, options) => {
     const wrap = el("div"),
       l = el("label", "", label);
@@ -145,6 +147,8 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
   });
   function reset() {
     generation++;
+    previewTicket++;
+    campaign.reset();
     rows = [];
     job = null;
     running = false;
@@ -187,6 +191,9 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
     $("batch-preset").value = previous;
   }
   function invalidate() {
+    previewTicket++;
+    $("bulk-sample").replaceChildren();
+    $("bulk-status").textContent = "Preview rows to apply changes.";
     rows = [];
     createId = null;
     $("bulk-create").disabled = true;
@@ -206,7 +213,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
       "tinytrail-template.csv",
       new Blob(
         [
-          "title,url,slug\r\nAnnual report,https://example.com/report,annual-report\r\nEvent programme,https://example.com/event,event-programme",
+          "title,url,slug,utm_source,utm_medium,utm_campaign,utm_term,utm_content\r\nAnnual report,https://example.com/report,annual-report,newsletter,email,annual-report,,header\r\nEvent programme,https://example.com/event,event-programme,poster,qr,conference,,entrance",
         ],
         { type: "text/csv" },
       ),
@@ -292,6 +299,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
       try {
         if (!row.title.trim() || row.title.length > 100)
           throw Error("Use a title of 1–100 characters.");
+        if (row.campaignError) throw Error(row.campaignError);
         qrOptions({ ...settings(), url: row.url });
         if (mode !== "qr") {
           validateSlug(row.slug);
@@ -321,6 +329,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
             input.disabled = key === "slug" && mode === "qr";
             input.onchange = act(async () => {
               row[key] = input.value.trim();
+              if (key === "url") row.campaignError = "";
               createId = null;
               await validate();
             });
@@ -368,7 +377,7 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
         throw Error("CSV has duplicate column headings.");
       data = parsed.map((r, i) =>
         Object.fromEntries(
-          ["title", "url", "slug"].map((key) => [
+          ["title", "url", "slug", ...UTM_FIELDS.map(field=>`utm_${field}`)].map((key) => [
             key,
             headers.includes(key)
               ? (r[headers.indexOf(key)] || "").trim()
@@ -382,7 +391,12 @@ export async function mountBulk({ api, act, message, getState, onChange }) {
     const maxRows = getState().workspace.kind === "personal" ? 10 : 100;
     if (!data.length || data.length > maxRows)
       throw Error(`Import 1–${maxRows} rows per batch.`);
-    rows = data;
+    const common = campaign.values(), options = campaign.options();
+    rows = data.map(row => {
+      const tags = Object.fromEntries(UTM_FIELDS.map(field => [field,row[`utm_${field}`]?.trim() || common[field]]));
+      try { return {...row,url:campaignURL(row.url,tags,options)}; }
+      catch (e) { return {...row,campaignError:e.message}; }
+    });
     createId = null;
     await validate();
   });

@@ -205,6 +205,7 @@
                   >
                     Cancel editing
                   </button>
+                  <div id="link-utm"></div>
                 </form>
 
                 <section id="result" class="box hidden">
@@ -423,10 +424,11 @@
               ></textarea>
 
               <p class="field-hint">
-                CSV columns: title, url, slug. Short names are required when
+                CSV columns: title, url, slug; optional utm_source, utm_medium, utm_campaign, utm_term, utm_content. Short names are required when
                 creating links.
               </p>
 
+              <div id="bulk-utm"></div>
               <button id="bulk-preview" class="button secondary">
                 Preview rows
               </button>
