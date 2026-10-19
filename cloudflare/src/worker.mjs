@@ -1,3 +1,4 @@
+import {checkGoogleWallet} from "./google-wallet.mjs";
 import {auditAPI,pruneAudit} from "./audit.mjs";
 import {
   collect,
@@ -106,7 +107,7 @@ async function bodyJSON(request) {
     fail(400, "Invalid JSON data.");
   }
 }
-export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkTarget}={}) {
+export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkTarget,walletTransport=fetch}={}) {
   return {
     async fetch(request, env, ctx) {
       try {
@@ -249,6 +250,12 @@ export function createApp(authenticate = verifyFirebaseToken,{healthCheck=checkT
           !domains.includes(user.email.split("@").pop())
         )
           fail(403, "This email domain does not have access.", "email_domain");
+        if(path==="/api/admin/wallet/google/check"){
+          if(!admin)fail(403,"Platform administrator access is required.","forbidden");
+          if(method!=="POST")fail(405,"Use POST to check the Wallet connection.");
+          if(url.search)fail(400,"The connection check accepts no URL parameters.");
+          return json(await checkGoogleWallet(env,{transport:walletTransport}));
+        }
         const db = env.DB,
           stmt = (q, ...args) => db.prepare(q).bind(...args),
           first = (q, ...args) => stmt(q, ...args).first(),

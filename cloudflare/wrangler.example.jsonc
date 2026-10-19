@@ -39,7 +39,10 @@
     "MAX_TRACKED_QRS_PER_WORKSPACE": "200",
     "LINK_HEALTH_ENABLED": "false",
     "CONTACT_EXCHANGE_ENABLED": "false",
-    "CONTACT_EXCHANGE_POLICY": ""
+    "CONTACT_EXCHANGE_POLICY": "",
+    "GOOGLE_WALLET_MODE": "disabled",
+    "GOOGLE_WALLET_ISSUER_ID": "",
+    "GOOGLE_WALLET_CLASS_ID": ""
   },
   "triggers": {
     "crons": [
