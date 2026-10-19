@@ -22,6 +22,7 @@ for (const file of [
   "utm.mjs",
   "resources.mjs",
   "people.mjs",
+  "people-photo.mjs",
   "staff-tools.mjs",
   "staff-distribution.mjs",
   "routing.mjs",

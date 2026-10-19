@@ -205,6 +205,8 @@ function mount() {
   });
   $("qr-close").addEventListener("click", () => dialog.close());
   dialog.addEventListener("close", () => {
+    // A queued close from the previous opening must not cancel a reopened preview.
+    if (dialog.open) return;
     clearTimeout(timer);
     version++;
     current = null;

@@ -209,6 +209,8 @@ try {
   assert.equal(await ev("document.querySelector('[name=qr-dots]:checked').value"), "dots");
   await click("qr-preview-toggle");
   assert.equal(await ev("document.getElementById('qr-preview-panel').hidden"), false);
+  await ev("(async()=>{const {openQRBuilder}=await import('/manage/qr-builder.mjs');document.getElementById('qr-dialog').close();await openQRBuilder({url:'https://example.com/close-race',trackingAvailable:false});})()");
+  await wait("!document.getElementById('qr-download').disabled && document.getElementById('qr-preview-url').textContent==='https://example.com/close-race'");
   await click("qr-close");
   await send("Page.navigate", {url:"http://127.0.0.1:4174/"});
   await wait("document.readyState==='complete' && document.getElementById('hero-create-form')");
@@ -224,12 +226,25 @@ try {
   await click("people-new");await fill("people-slug","qa-contact");await fill("people-name","Nadia Example");await fill("people-title","Consultant");await fill("people-organization","Example team");await fill("people-email","nadia@example.com");await fill("people-intro","A clear introduction for a professional contact card.");
   await ev("document.getElementById('people-form').requestSubmit()");await wait("document.getElementById('people-dirty').textContent==='Draft saved'");
   assert.equal(await ev("fetch('/people/qa-contact').then(r=>r.status)"),404);
+  const portraitFixture=new PNG({width:256,height:384});for(let i=0;i<portraitFixture.data.length;i+=4){portraitFixture.data[i]=80;portraitFixture.data[i+1]=(i/4)%256;portraitFixture.data[i+2]=160;portraitFixture.data[i+3]=255;}
+  const portraitPath=new URL("../../.qa/portrait-fixture.png",import.meta.url);await writeFile(portraitPath,PNG.sync.write(portraitFixture));
+  async function selectPortrait(path){const doc=await send("DOM.getDocument"),node=await send("DOM.querySelector",{nodeId:doc.root.nodeId,selector:"#people-photo-file"});await send("DOM.setFileInputFiles",{nodeId:node.nodeId,files:[decodeURIComponent(path.pathname.replace(/^\/([A-Z]:)/,"$1"))]});await wait("document.getElementById('people-photo-preview').src.startsWith('data:image/png') && document.getElementById('people-photo-preview').complete && document.getElementById('people-editor').getAttribute('aria-busy')==='false'");}
+  await selectPortrait(portraitPath);assert.equal(await ev("fetch('/people/qa-contact/photo').then(r=>r.status)"),404);
+
   await click("people-consent");await click("people-publish");await wait("document.getElementById('people-status').textContent.startsWith('Published.')");
   assert.equal(await ev("fetch('/people/qa-contact').then(r=>r.text()).then(t=>t.includes('Nadia Example'))"),true);
   assert.equal(await ev("fetch('/people/qa-contact/contact.vcf').then(r=>r.text()).then(t=>t.includes('FN:Nadia Example'))"),true);
+  assert.equal(await ev("fetch('/people/qa-contact/photo').then(r=>r.status)"),200);
+  const publicPhotoHash=await ev("fetch('/people/qa-contact/photo').then(r=>r.arrayBuffer()).then(b=>crypto.subtle.digest('SHA-256',b)).then(a=>Array.from(new Uint8Array(a)).join(','))");
+
   await fill("people-name","Unpublished name");assert.equal(await ev("document.getElementById('people-publish').disabled"),true);
   assert.equal(await ev("fetch('/people/qa-contact').then(r=>r.text()).then(t=>t.includes('Unpublished name'))"),false);
   await fill("people-name","Nadia Example");
+  for(let i=0;i<portraitFixture.data.length;i+=4)portraitFixture.data[i]=210;const secondPortraitPath=new URL("../../.qa/portrait-second.png",import.meta.url);await writeFile(secondPortraitPath,PNG.sync.write(portraitFixture));
+  await selectPortrait(secondPortraitPath);
+  assert.equal(await ev("fetch('/people/qa-contact/photo').then(r=>r.arrayBuffer()).then(b=>crypto.subtle.digest('SHA-256',b)).then(a=>Array.from(new Uint8Array(a)).join(','))"),publicPhotoHash);
+  await click("people-consent");await click("people-publish");await wait("document.getElementById('people-status').textContent.startsWith('Published.') && document.getElementById('people-publish').disabled");
+  assert.notEqual(await ev("fetch('/people/qa-contact/photo').then(r=>r.arrayBuffer()).then(b=>crypto.subtle.digest('SHA-256',b)).then(a=>Array.from(new Uint8Array(a)).join(','))"),publicPhotoHash);
   await click("people-sharing");await wait("document.getElementById('staff-sharing-dialog')?.open && document.querySelector('.staff-sharing-preview img')?.complete");
   await ev("window.__sharingExports=[];window.__sharingURL=URL.createObjectURL;URL.createObjectURL=function(b){window.__sharingExports.push(b);return window.__sharingURL(b)}");
   await click("staff-sharing-png");await wait("window.__sharingExports.length>=2 && !document.getElementById('staff-sharing-png').disabled");
@@ -603,6 +618,7 @@ try {
     JSON.stringify(
       {
         passed: [
+          "portrait upload/crop, private photo drafts, published snapshot preservation and mobile editor",
           "approved-snapshot sharing assets, decoded print/background PNGs, print PDF and safe email signature HTML",
           "company card templates, employee CSV validation/invalidation, resumable imports, formula-safe results and mobile layout",
           "contact-card creation/publication, private drafts, vCard download, stable profile QR and mobile editor",

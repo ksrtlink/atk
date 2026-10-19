@@ -11,6 +11,7 @@ export function vcard(content,url,revision) {
  for(const [key,prop]of [["organization","ORG"],["title","TITLE"],["department","ROLE"],["intro","NOTE"],["email","EMAIL"],["phone","TEL;VALUE=text"],["office","ADR;TYPE=work"]]){
   if(content[key])lines.push(prop+":"+(key==="office"?";;"+escape(content[key])+";;;;":escape(content[key])));
  }
+ if(content.photoId)lines.push("PHOTO;MEDIATYPE=image/png:"+url+"/photo");
  lines.push("UID:"+url,"URL:"+url,"REV:"+new Date(revision).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,""),"END:VCARD");
  return lines.map(fold).join("\r\n")+"\r\n";
 }

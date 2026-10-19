@@ -4,7 +4,7 @@ import {validateSlug} from "../../manage/core.mjs";
 const fail=(status,message)=>{throw new Problem(status,message);};
 const uuid=v=>typeof v==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const db=env=>({s:(q,...a)=>env.DB.prepare(q).bind(...a),first:(q,...a)=>env.DB.prepare(q).bind(...a).first(),all:async(q,...a)=>(await env.DB.prepare(q).bind(...a).all()).results});
-const editable=value=>{if(!Array.isArray(value)||value.length>20||value.some(k=>![...Object.keys(profileFields),"resources"].includes(k))||new Set(value).size!==value.length)fail(400,"Choose valid employee-editable fields.");return value;};
+const editable=value=>{if(!Array.isArray(value)||value.length>20||value.some(k=>![...Object.keys(profileFields),"resources","photoId"].includes(k))||new Set(value).size!==value.length)fail(400,"Choose valid employee-editable fields.");return value;};
 const template=row=>row?{content:JSON.parse(row.content_json),editable:JSON.parse(row.editable_json),version:row.version}:{content:{organization:"",department:"",office:""},editable:[],version:0};
 async function normalize(rows,env,request,wid){
  if(!Array.isArray(rows)||!rows.length||rows.length>100)fail(400,"Import 1 to 100 rows.");

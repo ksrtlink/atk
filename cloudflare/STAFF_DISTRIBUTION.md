@@ -18,4 +18,4 @@ Exports are generated locally with existing bundled QR/PDF libraries. No employe
 
 The files are functional, but actual Outlook/Gmail paste formatting, chosen meeting-app framing and physical print scans are not yet verified. Do not claim those real-client/device gates complete from browser tests. Apple/Google Wallet and actual iPhone/Android contact import remain separate gates.
 
-Staging Worker 430318ca-1f4b-43f2-8b31-4b21047e3147 deployed. Rollout: compare delivered asset hashes/private API guards, then deploy production. No schema migration is needed for this workstream. Roll back to the preceding Worker if needed; existing profile identities and database rows are unchanged.
+Staging Worker 430318ca-1f4b-43f2-8b31-4b21047e3147 deployed. Rollout: compare delivered asset hashes/private API guards, then deploy production. Production Worker 37288604-6c70-4c8f-bdbe-d9d6776dd756 deployed with delivered-file and private API checks passed. No schema migration is needed for this workstream. Roll back to the preceding Worker if needed; existing profile identities and database rows are unchanged.
