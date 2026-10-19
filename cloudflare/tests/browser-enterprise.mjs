@@ -149,7 +149,7 @@ try {
   assert.equal(await ev("getComputedStyle(document.body).color"),"rgb(38, 38, 38)");
   assert.equal(await ev("getComputedStyle(document.body).backgroundColor"),"rgb(247, 247, 248)");
   assert.equal(await ev("getComputedStyle(document.querySelector('.hero-tool')).borderRadius"),"16px");
-  assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).color"),"rgb(38, 38, 38)");
+  assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).color"),"rgb(255, 255, 255)");
 
   await shot("landing-desktop");
   await shot("landing-mobile", 390, 844);
@@ -241,8 +241,28 @@ try {
   await wait("document.getElementById('list-count').textContent==='2'");
   assert.match(await ev("[...document.querySelectorAll('.link-row')].find(row=>row.innerText.includes('automatic-name')).querySelector('.short-link').href"),/\/r\/[a-f0-9]{8}$/);
 
+  assert.equal(await ev("document.querySelector('[data-view=team] .nav-label').textContent"), "QR presets");
+  assert.equal(await ev("getComputedStyle(document.getElementById('library-contexts')).display"), "none");
+  assert.equal(await ev("document.querySelector('.sidebar').innerText.includes('company')"), false);
+  await ev("[...document.querySelectorAll('.link-row')].find(r=>r.innerText.includes('my-private-browser-link')).querySelector('.danger').click()");
+  await wait("document.getElementById('delete-link-dialog')?.open");
+  await shot("delete-link-dialog",1440,1000);
+  await click("delete-link-cancel");
+  assert.equal(await ev("document.getElementById('list-count').textContent"), "2");
+  await ev("[...document.querySelectorAll('.link-row')].find(r=>r.innerText.includes('my-private-browser-link')).querySelector('.danger').click()");
+  await click("delete-link-confirm");
+  await wait("document.getElementById('list-count').textContent==='1'");
+  await ev("document.getElementById('link-status').value='trash';document.getElementById('link-status').dispatchEvent(new Event('change'))");
+  assert.equal(await ev("document.getElementById('links').innerText.includes('my-private-browser-link')"),true);
+  await shot("link-trash",1440,1000);
+  await ev("document.querySelector('#links button').click()");
+  await wait("document.getElementById('list-count').textContent==='0' && !document.getElementById('empty').classList.contains('hidden')");
+  await ev("document.getElementById('link-status').value='active';document.getElementById('link-status').dispatchEvent(new Event('change'))");
+  assert.equal(await ev("document.getElementById('list-count').textContent"), "2");
   await shot("personal-desktop",1440,1000);
   await shot("personal-mobile",390,844);
+  await click("account-top");
+  await ev("document.getElementById('team-upgrade').open=true");
   await click("request-company");
   await fill("company-name", "Northstar Company");
   await fill("company-website", "https://example.com");
@@ -409,7 +429,8 @@ try {
     JSON.stringify(
       {
         passed: [
-          "layered theme, sidebar icons and collapse, creation panel hides without losing input",
+          "white accent actions, solo navigation, link deletion cancel/confirm/Trash/restore",
+    "layered theme, sidebar icons and collapse, creation panel hides without losing input",
     "QR tabs support keyboard arrows, soft selection, hide preview, minimize/resume",
     "minimized QR draft is discarded when changing workspace",
     "landing desktop/mobile, link/QR handoff and automatic short names",

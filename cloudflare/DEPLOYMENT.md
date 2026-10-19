@@ -6,7 +6,7 @@
 - Database: `tinytrail-db` (binding `DB`)
 - Public link origin: `https://tinytrail.link`
 - Firebase project: `k-shortlinks`
-- Database migrations `0001_schema.sql` and `0002_original_links.sql` have been applied remotely.
+- Apply migrations through `0006_link_trash.sql` before deploying the link Trash release. The additive deletion timestamp defaults to NULL for all existing links.
 - The custom domain was bound successfully during deployment. Cloudflare reports the domain zone as active.
 - The original eight GitHub Pages HTML redirects have not been changed. The imported records retain those exact URLs and remain read-only.
 

@@ -43,7 +43,7 @@ html = html.replace(
     .replace("YOUR PERSONAL WORKSPACE", "YOUR TINYTRAIL ACCOUNT")
     .replace(
       "One email account for your links and saved QR designs.",
-      "Sign in to your private library or assigned company workspace.",
+      "Your links and QR codes, in one place.",
     ).replace("Use your work email, or another email permitted by this workspace.", "Use an email you can verify. Company access is managed separately.",
     ),
 );

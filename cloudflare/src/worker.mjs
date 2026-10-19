@@ -115,7 +115,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
           if (qrRoute) {
             if (!env.DB) fail(503, "Storage unavailable.");
             const row = await env.DB.prepare(
-              "SELECT q.*,l.destination AS link_destination FROM tracked_qrs q LEFT JOIN links l ON l.slug=q.link_slug AND l.workspace_id=q.workspace_id WHERE q.id=?",
+              "SELECT q.*,l.destination AS link_destination,l.deleted_at AS link_deleted_at FROM tracked_qrs q LEFT JOIN links l ON l.slug=q.link_slug AND l.workspace_id=q.workspace_id WHERE q.id=?",
             )
               .bind(qrRoute[1])
               .first();
@@ -124,7 +124,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
                 status: 404,
                 headers: security,
               });
-            if (row.state !== "active")
+            if (row.state !== "active" || row.link_deleted_at)
               return new Response("This QR code is currently disabled.", {
                 status: 410,
                 headers: { ...security, "Cache-Control": "no-store" },
@@ -161,7 +161,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
           if (redirect) {
             if (!env.DB) fail(503, "Storage unavailable.");
             const row = await env.DB.prepare(
-              "SELECT destination,workspace_id,slug FROM links WHERE slug=?",
+              "SELECT destination,workspace_id,slug,deleted_at FROM links WHERE slug=?",
             )
               .bind(redirect[1])
               .first();
@@ -170,6 +170,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
                 status: 404,
                 headers: security,
               });
+            if (row.deleted_at) return new Response("This link has been deleted.", {status:410, headers:{...security,"Cache-Control":"no-store"}});
             const response = new Response(null, {
               status: 302,
               headers: {
@@ -488,7 +489,7 @@ export function createApp(authenticate = verifyFirebaseToken) {
         }
         if (path === "/api/tracked-qrs" && method === "GET") {
           const rows = await all(
-            "SELECT q.*,l.short_url AS link_short_url,l.destination AS link_destination FROM tracked_qrs q LEFT JOIN links l ON l.slug=q.link_slug AND l.workspace_id=q.workspace_id WHERE q.workspace_id=? ORDER BY q.created_at DESC LIMIT 1000",
+            "SELECT q.*,l.short_url AS link_short_url,l.destination AS link_destination,l.deleted_at AS link_deleted_at FROM tracked_qrs q LEFT JOIN links l ON l.slug=q.link_slug AND l.workspace_id=q.workspace_id WHERE q.workspace_id=? ORDER BY q.created_at DESC LIMIT 1000",
             wid,
           );
           return json({
@@ -550,12 +551,13 @@ export function createApp(authenticate = verifyFirebaseToken) {
                 "Request ID already used for a different link.",
                 "conflict",
               );
+            if (prior.deleted_at) fail(409, "Restore this link from Trash before reusing this request.");
             return linkRecord(prior);
           }
           let row;
           try {
             row = await first(
-              "INSERT INTO links(slug,destination,title,owner_uid,short_url,request_id,workspace_id,updated_by) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM links WHERE workspace_id=?)<? RETURNING *",
+              "INSERT INTO links(slug,destination,title,owner_uid,short_url,request_id,workspace_id,updated_by) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM links WHERE workspace_id=? AND deleted_at IS NULL)<? RETURNING *",
               data.slug,
               data.destination,
               data.title,
@@ -578,8 +580,10 @@ export function createApp(authenticate = verifyFirebaseToken) {
                 replay &&
                 replay.slug === data.slug &&
                 replay.destination === data.destination
-              )
+              ) {
+                if (replay.deleted_at) fail(409, "Restore this link from Trash before reusing this request.");
                 return linkRecord(replay);
+              }
               fail(409, "That short name is already in use.", "conflict");
             }
             throw e;
@@ -803,10 +807,11 @@ export function createApp(authenticate = verifyFirebaseToken) {
           return json({
             links: (
               await all(
-                "SELECT * FROM links WHERE workspace_id=? ORDER BY created_at DESC LIMIT 1000",
+                "SELECT * FROM links WHERE workspace_id=? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1000",
                 wid,
               )
             ).map(linkRecord),
+            deletedLinks: (await all("SELECT * FROM links WHERE workspace_id=? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 1000", wid)).map(linkRecord),
           });
         if (path === "/api/links" && method === "POST")
           return json(
@@ -819,6 +824,24 @@ export function createApp(authenticate = verifyFirebaseToken) {
             201,
           );
         const lm = path.match(/^\/api\/links\/([a-z0-9-]+)$/);
+        const restore = path.match(/^\/api\/links\/([a-z0-9-]+)\/restore$/);
+        if ((lm && method === "DELETE") || (restore && method === "POST")) {
+          const slug = (lm || restore)[1], restoring = !!restore;
+          const b = await bodyJSON(request);
+          if (!Number.isInteger(b.version)) fail(400, "Saved version is required.");
+          const old = await first("SELECT * FROM links WHERE slug=? AND workspace_id=? AND legacy=0", slug, wid);
+          if (!old) fail(404, "Link not found.", "not_found");
+          if (!!old.deleted_at !== restoring) return json({link:linkRecord(old)});
+          const row = await first(
+            `UPDATE links SET deleted_at=${restoring ? "NULL" : "strftime('%Y-%m-%dT%H:%M:%fZ','now')"},version=version+1,updated_by=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE slug=? AND workspace_id=? AND version=? ${restoring ? "AND (SELECT COUNT(*) FROM links WHERE workspace_id=? AND deleted_at IS NULL)<?" : ""} RETURNING *`,
+            user.uid, slug, wid, b.version, ...(restoring ? [wid,maxLinks] : []),
+          );
+          if (!row) {
+            if (old.version !== b.version) fail(409,"This link changed. Refresh and try again.","conflict");
+            fail(429,"Your link allowance is full. Delete another link before restoring this one.");
+          }
+          return json({link:linkRecord(row)});
+        }
         if (lm && method === "PATCH") {
           const b = await bodyJSON(request),
             data = linkInput(
@@ -829,13 +852,13 @@ export function createApp(authenticate = verifyFirebaseToken) {
           if (!Number.isInteger(b.version))
             fail(400, "Saved version is required.");
           const old = await first(
-            "SELECT * FROM links WHERE slug=? AND workspace_id=? AND legacy=0",
+            "SELECT * FROM links WHERE slug=? AND workspace_id=? AND legacy=0 AND deleted_at IS NULL",
             lm[1],
             wid,
           );
           if (!old) fail(404, "Link not found.", "not_found");
           const row = await first(
-            "UPDATE links SET destination=?,version=version+1,updated_by=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE slug=? AND workspace_id=? AND version=? RETURNING *",
+            "UPDATE links SET destination=?,version=version+1,updated_by=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE slug=? AND workspace_id=? AND version=? AND deleted_at IS NULL RETURNING *",
             data.destination,
             user.uid,
             lm[1],

@@ -57,7 +57,7 @@
         <button id="personal-open" class="button secondary" type="button">Personal</button>
         <button id="company-open" class="button secondary" type="button">Company</button>
       </div>
-      <button id="request-company" class="text-button hidden" type="button">Need a company workspace?</button>
+      
 
       <nav class="enterprise-nav" aria-label="Workspace">
         <button data-view="links" class="active"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#link"></use></svg><span class="nav-label">Link library</span></button
@@ -85,11 +85,11 @@
       <main id="main">
         <div class="page-heading">
           <div>
-            <div class="eyebrow">EVERY LINK. EVERY CONNECTION.</div>
+
 
             <h1 id="page-title">Your company’s link studio.</h1>
 
-            <p id="workspace-description">
+            <p id="workspace-description" class="hidden">
               Consistent links. Considered QR codes. Ready for the real world.
             </p>
           </div>
@@ -174,7 +174,7 @@
                 <form id="link-form" class="composer quick-composer">
                   
 
-                  <h2 id="form-heading">Create a short link or QR code.</h2>
+                  <h2 id="form-heading">Create a link or QR code.</h2>
 
                   <label for="destination">Paste a destination URL</label
                   ><input
@@ -191,7 +191,7 @@
                   />
 
                   <p class="field-hint">
-                    Choose a name, or leave it blank for a short code.
+                    Leave the name blank to generate one.
                   </p>
 
                   <div id="preview" class="link-preview"></div>
@@ -345,7 +345,7 @@
                     type="search"
                     placeholder="Search links…"
                     aria-label="Search links"
-                  /><button id="export" class="button secondary">
+                  /><select id="link-status" aria-label="Link status"><option value="active">Active links</option><option value="trash">Trash</option></select><button id="export" class="button secondary">
                     Export CSV
                   </button>
                 </div>
@@ -355,7 +355,7 @@
                 <div id="links" class="link-list"></div>
 
                 <p id="empty" class="hidden">
-                  No links yet. Create a short link or import a batch.
+                  No links yet. Create your first link.
                 </p>
               </div>
 

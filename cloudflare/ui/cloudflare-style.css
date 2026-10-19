@@ -226,3 +226,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .sidebar { transition:width 200ms var(--ease-theme); }
   .main-wrap { transition:margin-left 200ms var(--ease-theme); }
 }
+
+/* All orange-filled actions use the requested white foreground, including icons. */
+.button.primary, .primary, .button.primary:hover, .primary:hover, .button.primary:active, .primary:active { color:var(--theme-on-primary); }
+.button.primary svg, .primary svg { fill:currentColor; }
+#workspace-description.hidden { display:none; }
+#team-upgrade { margin:16px 0; font-size:13px; line-height:1.5; }
+#team-upgrade summary { cursor:pointer; color:var(--muted); }
+#team-upgrade .button { margin-top:12px; }
+#link-status { width:auto; min-width:110px; }
+#delete-link-dialog { width:min(440px,calc(100vw - 32px)); padding:24px; border-radius:var(--radius-xl); box-shadow:var(--shadow-elevated); }
+#delete-link-dialog h2 { font-size:21px; font-weight:500; }
+#delete-link-dialog p { line-height:1.5; overflow-wrap:anywhere; }
+#delete-link-name { font-family:var(--font-mono); font-size:12px; }
+#delete-link-error { color:var(--cf-danger); }
+#delete-link-dialog::backdrop { background:#20202b38; backdrop-filter:blur(6px); }
+@media(max-width:550px) { .toolbar { flex-wrap:wrap; } .toolbar input { flex-basis:100%; } }
+@media(prefers-reduced-transparency:reduce) { #delete-link-dialog::backdrop { backdrop-filter:none; } }

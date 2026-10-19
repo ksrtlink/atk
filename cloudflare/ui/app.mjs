@@ -23,6 +23,7 @@ let config,
   me = null,
   workspace = null,
   links = [],
+  deletedLinks = [],
   designs = [],
   presets = [],
   editing = null,
@@ -103,13 +104,15 @@ export function act(fn) {
 }
 function clearLibrary() {
   links = [];
+  deletedLinks = [];
+  $("link-status").value = "active";
   designs = [];
   presets = [];
   editing = null;
   createKey = null;
   $("link-form").reset();
   $("slug").disabled = false;
-  $("form-heading").textContent = "Create a short link or QR code.";
+  $("form-heading").textContent = "Create a link or QR code.";
   $("submit").textContent = "Shorten link";
   $("cancel-edit").classList.add("hidden");
   $("result").classList.add("hidden");
@@ -152,7 +155,7 @@ function ui() {
   $("auth-signedout").classList.toggle("hidden", !!user);
   $("auth-current-email").textContent = user?.email || "";
   $("auth-verified-note").textContent = me
-    ? "Email verified. Your personal library is private; company access is managed separately."
+    ? "Email verified. Your library is private."
     : "Verify your email, then refresh verification to continue.";
   $("auth-check").classList.toggle("hidden", !!me);
   $("auth-resend").classList.toggle("hidden", !!me);
@@ -168,7 +171,7 @@ function ui() {
     ? `Your request is ${me.accessRequest.status}.`
     : "";
   $("notice").textContent = !user
-    ? "Sign in or create an account, then verify your email to open your private workspace."
+    ? "Sign in to open your private library."
     : !me
       ? "Verify your email to continue."
       : !workspace
@@ -183,11 +186,12 @@ function ui() {
   $("library-contexts").classList.toggle("hidden", !workspace || !me?.workspaces.length);
   $("personal-open").setAttribute("aria-pressed", String(personal));
   $("company-open").setAttribute("aria-pressed", String(!personal));
-  $("request-company").classList.toggle("hidden", !personal || !!me?.workspaces.length);
+  $("team-upgrade").classList.toggle("hidden", !personal || !!me?.workspaces.length);
   $("personal-account-note").classList.toggle("hidden", !personal);
   $("company-members-box").classList.toggle("hidden", personal);
-  document.querySelector('[data-view="team"] .nav-label').textContent = personal ? "Workspace settings" : "Company & team";
+  document.querySelector('[data-view="team"] .nav-label').textContent = personal ? "QR presets" : "Company & team";
   document.querySelector('#view-links h2').firstChild.nodeValue = personal ? "Your links " : "Company links ";
+  document.querySelector('[data-view="team"] use').setAttribute("href", `/manage/icons.svg#${personal ? "qr-code" : "users"}`);
   $("presets-note").textContent = personal ? "Styles saved here are private to your account." : "Styles saved here are shared with your company.";
   const switchable = !personal && !!me?.canSwitchCompanies;
   $("company-switcher").classList.toggle("hidden", !switchable);
@@ -231,15 +235,19 @@ function ui() {
 function render() {
   const query = $("search").value.toLowerCase();
   $("links").replaceChildren();
-  $("list-count").textContent = links.length;
-  $("empty").classList.toggle("hidden", !!links.length);
-  for (const link of links.filter((l) =>
+  const trash = $("link-status").value === "trash";
+  const visibleLinks = trash ? deletedLinks : links;
+  $("list-count").textContent = visibleLinks.length;
+  $("empty").classList.toggle("hidden", !!visibleLinks.length);
+  $("empty").textContent = trash ? "Trash is empty." : "No links yet. Create your first link.";
+  $("export").disabled = trash;
+  for (const link of visibleLinks.filter((l) =>
     `${l.title} ${l.url} ${l.slug}`.toLowerCase().includes(query),
   )) {
     const row = node("article", "link-row"),
       body = node("div", "link-body"),
       a = node("a", "short-link", link.shortUrl.replace(/^https?:\/\//, ""));
-    a.href = link.shortUrl;
+    if (!trash) a.href = link.shortUrl;
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     body.append(
@@ -248,7 +256,13 @@ function render() {
       node("span", "destination", link.url),
     );
     const actions = node("div", "row-actions");
-    for (const [label, fn] of [
+    const restoreLink = async () => {
+      await api("/api/links/" + link.slug + "/restore", {method:"POST",body:{version:link.version}});
+      await refreshLibrary();
+      message("Link restored.");
+    };
+    const deleteLink = () => confirmDelete(link);
+    for (const [label, fn] of (trash ? [["Restore", restoreLink]] : [
       ["QR", () => openQR(link.shortUrl)],
       [
         "Copy",
@@ -272,8 +286,9 @@ function render() {
           $("destination").focus();
         },
       ],
-    ]) {
-      const button = node("button", "", label);
+      ...(!link.legacy ? [["Delete", deleteLink]] : []),
+    ])) {
+      const button = node("button", label === "Delete" ? "danger" : "", label);
       button.onclick = act(fn);
       actions.append(button);
     }
@@ -286,7 +301,7 @@ function render() {
       node(
         "p",
         "box",
-        "No QR designs yet. Create one from any URL—no saved link needed.",
+        "No QR codes yet. Create one from any URL.",
       ),
     );
   for (const d of designs) {
@@ -367,6 +382,7 @@ async function refreshLibrary() {
   ]);
   if (ticket !== epoch) return;
   links = a.links;
+  deletedLinks = a.deletedLinks || [];
   designs = b.designs;
   presets = c.presets;
   render();
@@ -644,7 +660,7 @@ async function changeContext(next) {
 }
 $("personal-open").onclick = act(() => changeContext(me?.personalWorkspace));
 $("company-open").onclick = act(() => changeContext(me?.workspaces.find(w => w.id === me.assignedWorkspaceId) || me?.workspaces[0]));
-$("request-company").onclick = () => { requestCompany = !requestCompany; ui(); if (requestCompany) $("access-panel").scrollIntoView({block:"start",behavior:"smooth"}); };
+$("request-company").onclick = () => { $("account-dialog").close(); requestCompany = !requestCompany; ui(); if (requestCompany) $("access-panel").scrollIntoView({block:"start",behavior:"smooth"}); };
 $("access-refresh").onclick = act(load);
 $("access-form").onsubmit = act(async (e) => {
   e.preventDefault();
@@ -719,7 +735,7 @@ $("link-form").onsubmit = act(async (e) => {
     $("link-form").reset();
     $("slug").disabled = false;
     $("cancel-edit").classList.add("hidden");
-    $("form-heading").textContent = "Create a short link or QR code.";
+    $("form-heading").textContent = "Create a link or QR code.";
     $("submit").textContent = "Shorten link";
     ui();
     await refreshLibrary();
@@ -735,7 +751,7 @@ $("cancel-edit").onclick = () => {
   $("link-form").reset();
   $("slug").disabled = false;
   $("cancel-edit").classList.add("hidden");
-  $("form-heading").textContent = "Create a short link or QR code.";
+  $("form-heading").textContent = "Create a link or QR code.";
   $("submit").textContent = "Shorten link";
   ui();
 };
@@ -745,6 +761,7 @@ for (const id of ["slug", "destination"])
     ui();
   };
 $("search").oninput = render;
+$("link-status").onchange = render;
 $("refresh").onclick = act(load);
 $("creator-toggle").onclick = () => {
   creatorHidden = !creatorHidden;
@@ -802,4 +819,37 @@ try {
   }
 } catch (e) {
   error(e.message);
+}
+
+let deleteDialog, pendingDelete;
+function confirmDelete(link) {
+  if (!deleteDialog) {
+    deleteDialog = document.createElement("dialog");
+    deleteDialog.id = "delete-link-dialog";
+    deleteDialog.setAttribute("aria-labelledby", "delete-link-heading");
+    deleteDialog.innerHTML = '<h2 id="delete-link-heading">Delete this link?</h2><p id="delete-link-name"></p><p>The link and QR codes using it will stop opening. You can restore it from Trash.</p><p id="delete-link-error" role="alert"></p><div class="action-row"><button id="delete-link-cancel" class="button secondary" autofocus>Keep link</button><button id="delete-link-confirm" class="button danger">Delete link</button></div>';
+    document.body.append(deleteDialog);
+    $("delete-link-cancel").onclick = () => deleteDialog.close();
+    deleteDialog.onclose = () => { if (!deleteDialog.open) pendingDelete = null; };
+    document.addEventListener("tinytrail:clear-qr", () => { pendingDelete = null; deleteDialog.close(); });
+    $("delete-link-confirm").onclick = async () => {
+      if (!pendingDelete) return;
+      const item = pendingDelete;
+      $("delete-link-confirm").disabled = true;
+      try {
+        await api("/api/links/" + item.slug, {method:"DELETE",body:{version:item.version}});
+        if (pendingDelete !== item) return;
+        if (editing?.slug === item.slug) $("cancel-edit").click();
+        $("result").classList.add("hidden");
+        deleteDialog.close();
+        await refreshLibrary();
+        message("Link moved to Trash.");
+      } catch (e) { if (pendingDelete === item) $("delete-link-error").textContent = e.message; }
+      finally { $("delete-link-confirm").disabled = false; }
+    };
+  }
+  pendingDelete = link;
+  $("delete-link-name").textContent = link.shortUrl;
+  $("delete-link-error").textContent = "";
+  deleteDialog.showModal();
 }

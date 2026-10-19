@@ -115,6 +115,7 @@ export function linkRecord(row) {
     url: row.destination,
     shortUrl: row.short_url,
     legacy: !!row.legacy,
+    deletedAt: row.deleted_at || null,
     version: row.version,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

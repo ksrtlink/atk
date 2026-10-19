@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFile } from "node:fs/promises";
 import { createApp } from "../src/worker.mjs";
 const migrations = await Promise.all(
-  ["0001_schema.sql", "0002_original_links.sql", "0003_enterprise.sql", "0004_analytics.sql", "0005_personal.sql"].map(
+  ["0001_schema.sql", "0002_original_links.sql", "0003_enterprise.sql", "0004_analytics.sql", "0005_personal.sql", "0006_link_trash.sql"].map(
     (n) => readFile(new URL("../migrations/" + n, import.meta.url), "utf8"),
   ),
 );
@@ -680,4 +680,48 @@ test("personal limits bound saved links, QR designs and bulk rows on the server"
 
   for(let i=0;i<25;i++) assert.equal((await f.request("/api/designs",{wid,method:"POST",body:{id:crypto.randomUUID(),title:"Private QR",url:"https://example.com",settings:style}})).status,201);
   assert.equal((await f.request("/api/designs",{wid,method:"POST",body:{id:crypto.randomUUID(),title:"Extra QR",url:"https://example.com",settings:style}})).status,429);
+});
+
+
+test("deleted links go to private Trash, stop redirects and tracked QR codes, and restore the same address", async () => {
+  const f=fixture(), wid=(await f.data("/api/me")).personalWorkspace.id;
+  await create(f,wid,"trash-link");
+  f.env.TRACKED_QR_ENABLED="true";
+  const asset=(await f.data("/api/tracked-qrs",{wid,method:"POST",body:{id:crypto.randomUUID(),title:"Printed QR",linkSlug:"trash-link"}})).asset;
+  assert.equal((await f.request("/r/trash-link",{user:null})).status,302);
+  assert.equal((await f.request(new URL(asset.publicUrl).pathname,{user:null})).status,302);
+  assert.equal((await f.request("/api/links/trash-link",{wid,method:"DELETE",body:{version:0}})).status,409);
+  const removed=await f.data("/api/links/trash-link",{wid,method:"DELETE",body:{version:1}});
+  assert.ok(removed.link.deletedAt);
+  assert.equal(removed.link.version,2);
+  assert.equal((await f.data("/api/links",{wid})).links.length,0);
+  assert.equal((await f.data("/api/links",{wid})).deletedLinks.length,1);
+  assert.equal((await f.request("/r/trash-link",{user:null})).status,410);
+  assert.equal((await f.request(new URL(asset.publicUrl).pathname,{user:null})).status,410);
+  assert.equal((await f.request("/api/links/trash-link",{wid,method:"PATCH",body:{version:2,destination:"https://example.com/new"}})).status,404);
+  assert.equal((await create(f,wid,"trash-link")).status,409);
+  const other=(await f.data("/api/me",{user:"bob"})).personalWorkspace.id;
+  for (const [path,method] of [["/api/links/trash-link","DELETE"],["/api/links/trash-link/restore","POST"]])
+    assert.equal((await f.request(path,{user:"bob",wid:other,method,body:{version:2}})).status,404);
+  assert.equal((await f.data("/api/links",{user:"bob",wid:other})).deletedLinks.length,0);
+  assert.equal((await f.request("/api/links/trash-link/restore",{wid,method:"POST",body:{version:1}})).status,409);
+  const restored=await f.data("/api/links/trash-link/restore",{wid,method:"POST",body:{version:2}});
+  assert.equal(restored.link.deletedAt,null);
+  assert.equal(restored.link.shortUrl,removed.link.shortUrl);
+  assert.equal((await f.request("/r/trash-link",{user:null})).status,302);
+  assert.equal((await f.request(new URL(asset.publicUrl).pathname,{user:null})).status,302);
+  assert.equal((await f.data("/api/links",{wid})).deletedLinks.length,0);
+});
+
+test("restore enforces active-link quotas and deletion cannot change the original legacy links", async () => {
+  const f=fixture(), wid=(await f.data("/api/me")).personalWorkspace.id;
+  for(let i=0;i<25;i++) await create(f,wid,"quota-trash-"+i);
+  await f.data("/api/links/quota-trash-0",{wid,method:"DELETE",body:{version:1}});
+  await create(f,wid,"replacement");
+  assert.equal((await f.request("/api/links/quota-trash-0/restore",{wid,method:"POST",body:{version:2}})).status,429);
+  await f.data("/api/links/replacement",{wid,method:"DELETE",body:{version:1}});
+  assert.equal((await f.request("/api/links/quota-trash-0/restore",{wid,method:"POST",body:{version:2}})).status,200);
+  const legacy=f.db.sql.prepare("SELECT slug,workspace_id FROM links WHERE legacy=1 LIMIT 1").get();
+  assert.equal((await f.request("/api/links/"+legacy.slug,{wid,method:"DELETE",body:{version:1}})).status,404);
+  assert.equal(f.db.sql.prepare("SELECT deleted_at FROM links WHERE slug=?").get(legacy.slug).deleted_at,null);
 });

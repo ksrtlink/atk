@@ -237,7 +237,7 @@ async function target(env, wid, body, request) {
     if (typeof body.linkSlug !== "string")
       bad(400, "Choose a valid company link.");
     const link = await first(
-      "SELECT slug FROM links WHERE slug=? AND workspace_id=? AND legacy=0",
+      "SELECT slug FROM links WHERE slug=? AND workspace_id=? AND legacy=0 AND deleted_at IS NULL",
       body.linkSlug,
       wid,
     );
@@ -437,7 +437,7 @@ export async function analyticsReport(env, wid, params) {
   if (r.type) {
     selected = await first(
       r.type === "link"
-        ? "SELECT slug AS id,created_at FROM links WHERE slug=? AND workspace_id=? AND legacy=0"
+        ? "SELECT slug AS id,created_at FROM links WHERE slug=? AND workspace_id=? AND legacy=0 AND deleted_at IS NULL"
         : "SELECT id,created_at FROM tracked_qrs WHERE id=? AND workspace_id=?",
       r.id,
       wid,
@@ -486,7 +486,7 @@ export async function analyticsReport(env, wid, params) {
     ...currentArgs,
   );
   const links = await all(
-      "SELECT slug AS id,title,created_at FROM links WHERE workspace_id=? AND legacy=0 ORDER BY created_at DESC LIMIT 1000",
+      "SELECT slug AS id,title,created_at FROM links WHERE workspace_id=? AND legacy=0 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1000",
       wid,
     ),
     qrs = await all(

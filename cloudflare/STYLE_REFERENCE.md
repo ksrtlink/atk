@@ -8,7 +8,7 @@ Native CSS and DOM adaptation of the user's Cloudflare dashboard reference. This
 - Cloudflare Kumo Sidebar: https://kumo-ui.com/components/sidebar/ — icon navigation and compact mode.
 - Phosphor Core: https://github.com/phosphor-icons/core — the same icon family used by Kumo examples. Exact build-only dependency 2.1.1; build emits a selected SVG sprite and includes its MIT notice. No icon JavaScript runtime or React migration.
 
-`ui/theme.css` owns palette, radius, depth, glass and motion tokens. `ui/cloudflare-style.css` is the shared final presentation layer for landing, dashboard, bulk, analytics and dialogs. Shapes follow one scale: 6px small treatments, 8px controls, 12px panels and 16px hero/modal surfaces. Orange remains #ff5e1f; dark labels maintain contrast. QR ink and saved artwork retain their existing palette.
+`ui/theme.css` owns palette, radius, depth, glass and motion tokens. `ui/cloudflare-style.css` is the shared final presentation layer for landing, dashboard, bulk, analytics and dialogs. Shapes follow one scale: 6px small treatments, 8px controls, 12px panels and 16px hero/modal surfaces. Orange remains #ff5e1f; orange-filled actions use white text and icons at the user’s request. QR ink and saved artwork retain their existing palette.
 
 The shell and dialog chrome use translucent white with native backdrop blur; data surfaces remain readable white over a pale gray canvas. Reduced-transparency preferences produce opaque surfaces. System fallbacks are used for the named FT Kunst Grotesk/Apercu families because licensed font files are absent.
 
@@ -33,3 +33,12 @@ No backend routes, authentication policy, database schema, record contents, quot
 - Desktop and mobile screenshots reviewed for landing, dashboard and QR export/style states. Screenshots wait for finite animations before capture.
 
 Browser tests use signed test identities and mocked Firebase responses in an isolated local harness; they do not send real verification emails. Production email delivery is outside this UI change.
+
+
+## Follow-up: personal accounts and link Trash
+
+Orange-filled actions now use the shared white foreground in normal, hover and active states. Personal accounts show QR presets rather than Company & team; membership controls remain absent without an approved company. Optional team setup lives in a disclosure inside account settings. The repeated dashboard tagline and helper copy were shortened.
+
+Migration `0006_link_trash.sql` adds a nullable deletion timestamp. DELETE `/api/links/:slug` moves a non-legacy link in the active authorized workspace to Trash; POST `/api/links/:slug/restore` restores it. Both require the saved version. Public short-link and linked tracked-QR routes return 410 while deleted; restore reactivates the same addresses. Original legacy redirects are protected. Slugs remain reserved, and restore respects active-link allowances. Saved QR designs and historical anonymous analytics are retained.
+
+The library includes Active links / Trash and a Restore action. A confirmation names the address and explains QR impact before deletion. Workspace/account changes close and clear the confirmation. Backend regressions cover stale versions, cross-workspace access, quotas, legacy protection and linked QR redirects; browser checks cover cancel/delete/trash/restore and solo-user navigation. No production record was deleted during verification.
