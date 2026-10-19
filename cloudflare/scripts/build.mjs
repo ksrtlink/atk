@@ -72,7 +72,7 @@ landing = landing.replaceAll(
   }),
 );
 await writeFile(new URL("public/index.html", project), landing);
-for (const file of ["landing.css", "landing.mjs", "theme.css"])
+for (const file of ["landing.css", "landing.mjs", "theme.css", "cloudflare-style.css"])
   await cp(new URL("ui/" + file, project), new URL("public/" + file, project));
 await writeFile(
   new URL("public/_headers", project),

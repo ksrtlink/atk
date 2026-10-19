@@ -144,8 +144,19 @@ try {
   await wait("document.readyState === 'complete'");
   const theme = await ev("({accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),radius:getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()})");
   assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).backgroundColor"), "rgb(255, 94, 31)");
+  assert.equal(theme.radius,"2px");
+  assert.equal(await ev("getComputedStyle(document.body).color"),"rgb(38, 38, 38)");
+  assert.equal(await ev("getComputedStyle(document.body).backgroundColor"),"rgb(255, 255, 255)");
+  assert.equal(await ev("getComputedStyle(document.querySelector('.hero-tool')).borderRadius"),"2px");
+  assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).color"),"rgb(38, 38, 38)");
+
   await shot("landing-desktop");
   await shot("landing-mobile", 390, 844);
+  assert.ok(await ev("document.getElementById('hero-create-submit').getBoundingClientRect().height>=44"));
+  await send("Emulation.setEmulatedMedia",{features:[{name:"prefers-reduced-motion",value:"reduce"}]});
+  assert.equal(await ev("getComputedStyle(document.getElementById('hero-create-submit')).transitionDuration"),"0s");
+  await send("Emulation.setEmulatedMedia",{features:[]});
+
   await click("hero-qr-tab");
   assert.equal(await ev("document.getElementById('hero-qr-tab').getAttribute('aria-pressed')"),"true");
   await fill("hero-url","https://example.com/hero-draft");
@@ -261,6 +272,9 @@ try {
     "document.getElementById('designs').innerText.includes('Direct company QR')",
   );
   await shot("enterprise-qr", 1440, 1000);
+  await shot("enterprise-qr-mobile",390,844);
+  assert.equal(await ev("document.getElementById('qr-dialog').scrollWidth <= document.getElementById('qr-dialog').clientWidth"),true);
+  await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await click("qr-close");
   await ev("document.querySelector('[data-view=bulk]').click()");
   await wait("document.getElementById('batch-dots')");
