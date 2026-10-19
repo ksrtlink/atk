@@ -21,6 +21,7 @@ for (const file of [
   "app.mjs",
   "utm.mjs",
   "resources.mjs",
+  "people.mjs",
   "routing.mjs",
   "auth.mjs",
   "accounts.css",
@@ -33,7 +34,7 @@ for (const file of [
   "analytics.css",
 ])
   await cp(new URL(`ui/${file}`, project), new URL(file, output));
-const iconNames = ["link", "files", "qr-code", "stack", "chart-bar", "users", "shield-check", "sidebar-simple", "eye", "minus", "x"];
+const iconNames = ["link", "user", "files", "qr-code", "stack", "chart-bar", "users", "shield-check", "sidebar-simple", "eye", "minus", "x"];
 const symbols = await Promise.all(iconNames.map(async name => {
   const svg = await readFile(new URL(`node_modules/@phosphor-icons/core/assets/regular/${name}.svg`, project), "utf8");
   return `<symbol id="${name}" viewBox="0 0 256 256">${svg.replace(/^.*?<svg[^>]*>/s, "").replace(/<\/svg>\s*$/, "")}</symbol>`;

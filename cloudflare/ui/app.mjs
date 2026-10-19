@@ -14,6 +14,7 @@ import {
 const $ = (id) => document.getElementById(id);
 let analyticsView = null;
 let resourcesView = null;
+let peopleView = null;
 let creatorHidden = false;
 try { creatorHidden = localStorage.getItem("tinytrail.creator-hidden") === "true"; } catch {}
 export const node = (tag, cls = "", value = "") =>
@@ -148,6 +149,7 @@ function clearLibrary() {
     $(id)?.replaceChildren();
   bulk?.reset();
   resourcesView?.reset();
+  peopleView?.reset();
   analyticsView?.reset();
 }
 let requestCompany = false;
@@ -227,7 +229,7 @@ function ui() {
   $("preview").textContent = editing
     ? editing.shortUrl
     : `${config?.publicOrigin || location.origin}/r/${$("slug").value || "your-name"}`;
-  for (const name of ["links", "designs", "resources", "bulk", "team", "admin", "analytics"])
+  for (const name of ["links", "designs", "resources", "people", "bulk", "team", "admin", "analytics"])
     $("view-" + name).classList.toggle(
       "hidden",
       view !== name || (name === "admin" ? !me?.platformAdmin : !workspace),
@@ -560,6 +562,10 @@ async function setView(next) {
       });
     }
     await analyticsView.refresh();
+  }
+  if (next === "people" && workspace) {
+    if (!peopleView) {const {mountPeople}=await import("./people.mjs");peopleView=mountPeople({api,act,message,onQR:url=>openQR(url,null,{staticOnly:true})});}
+    await peopleView.refresh();
   }
   if (next === "resources" && workspace) {
     if (!resourcesView) {

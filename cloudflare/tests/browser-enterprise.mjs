@@ -217,12 +217,33 @@ try {
   await wait("document.getElementById('destination').value==='https://example.com/link-draft'");
   assert.equal(await ev("document.getElementById('list-count').textContent"),"0");
   assert.equal(await ev("sessionStorage.getItem('tinytrail.create-draft')"),null);
+  await ev("document.querySelector('[data-view=people]').click()");
+  await wait("document.getElementById('people-new') && !document.getElementById('people-new').classList.contains('hidden')");
+  await click("people-new");await fill("people-slug","qa-contact");await fill("people-name","Nadia Example");await fill("people-title","Consultant");await fill("people-organization","Example team");await fill("people-email","nadia@example.com");await fill("people-intro","A clear introduction for a professional contact card.");
+  await ev("document.getElementById('people-form').requestSubmit()");await wait("document.getElementById('people-dirty').textContent==='Draft saved'");
+  assert.equal(await ev("fetch('/people/qa-contact').then(r=>r.status)"),404);
+  await click("people-consent");await click("people-publish");await wait("document.getElementById('people-status').textContent.startsWith('Published.')");
+  assert.equal(await ev("fetch('/people/qa-contact').then(r=>r.text()).then(t=>t.includes('Nadia Example'))"),true);
+  assert.equal(await ev("fetch('/people/qa-contact/contact.vcf').then(r=>r.text()).then(t=>t.includes('FN:Nadia Example'))"),true);
+  await fill("people-name","Unpublished name");assert.equal(await ev("document.getElementById('people-publish').disabled"),true);
+  assert.equal(await ev("fetch('/people/qa-contact').then(r=>r.text()).then(t=>t.includes('Unpublished name'))"),false);
+  await fill("people-name","Nadia Example");await shot("people-editor-desktop");await shot("people-editor-mobile",390,844);
+  await click("people-qr");await wait("document.getElementById('qr-dialog')?.open");assert.match(await ev("document.getElementById('qr-url').value"),/\/people\/qr\/[0-9a-f-]{36}$/);
+  await wait("!document.getElementById('qr-download').disabled");const profileQR=await ev("document.getElementById('qr-url').value");
+  await ev("window.__profileExport=null;window.__profileObjectURL=URL.createObjectURL;URL.createObjectURL=function(b){window.__profileExport=b;return window.__profileObjectURL(b)}");
+  await fill("qr-format","png");await ev("document.getElementById('qr-format').dispatchEvent(new Event('change'))");await click("qr-download");await wait("!!window.__profileExport");
+  const profilePNG=await ev("new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(window.__profileExport);})");
+  const profileImage=PNG.sync.read(Buffer.from(profilePNG,"base64"));assert.equal(jsQR(new Uint8ClampedArray(profileImage.data),profileImage.width,profileImage.height)?.data,profileQR);
+  await ev("URL.createObjectURL=window.__profileObjectURL;delete window.__profileObjectURL;delete window.__profileExport");
+  await click("qr-close");await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await ev("document.querySelector('[data-view=links]').click()");
+
   await wait("document.getElementById('page-title').textContent.includes('personal')");
   assert.equal(await ev("document.getElementById('open-qr').disabled"),false);
   assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"),"none");
   await click("sidebar-toggle");
   assert.equal(await ev("document.body.classList.contains('sidebar-collapsed')"), true);
-  assert.equal(await ev("document.querySelectorAll('.enterprise-nav .ui-icon use').length"), 7);
+  assert.equal(await ev("document.querySelectorAll('.enterprise-nav .ui-icon use').length"), 8);
   await click("sidebar-toggle");
   await fill("destination", "https://example.com/retained-draft");
   await click("creator-toggle");
@@ -537,11 +558,13 @@ try {
   assert.equal(await ev("document.getElementById('bulk-utm-source')?.value || ''"), "");
   assert.equal(await ev("document.getElementById('resource-title').value"), "");
   assert.equal(await ev("document.getElementById('resource-items').childElementCount"), 0);
+  assert.equal(await ev("document.getElementById('people-name')?.value || ''"), "");
   assert.equal(errors.length, 0, JSON.stringify(errors));
   console.log(
     JSON.stringify(
       {
         passed: [
+          "contact-card creation/publication, private drafts, vCard download, stable profile QR and mobile editor",
           "schedule timezone conversion, rule preview precedence, saved audience rules and mobile editor",
     "resource drafts/public snapshots, publication, mobile pages, decoded page QR and unpublish",
     "campaign URL preview, keep/replace, individual link/QR destinations, CSV overrides and preview invalidation",
