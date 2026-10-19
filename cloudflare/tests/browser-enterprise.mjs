@@ -110,6 +110,7 @@ export async function shot(name, width = 1440, height = 1000) {
     mobile: width < 650,
   });
   await ev("document.fonts.ready");
+  await ev("Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})))");
   assert.equal(
     await ev("document.documentElement.scrollWidth<=innerWidth"),
     true,
@@ -144,10 +145,10 @@ try {
   await wait("document.readyState === 'complete'");
   const theme = await ev("({accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),radius:getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()})");
   assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).backgroundColor"), "rgb(255, 94, 31)");
-  assert.equal(theme.radius,"2px");
+  assert.equal(theme.radius,"8px");
   assert.equal(await ev("getComputedStyle(document.body).color"),"rgb(38, 38, 38)");
-  assert.equal(await ev("getComputedStyle(document.body).backgroundColor"),"rgb(255, 255, 255)");
-  assert.equal(await ev("getComputedStyle(document.querySelector('.hero-tool')).borderRadius"),"2px");
+  assert.equal(await ev("getComputedStyle(document.body).backgroundColor"),"rgb(247, 247, 248)");
+  assert.equal(await ev("getComputedStyle(document.querySelector('.hero-tool')).borderRadius"),"16px");
   assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).color"),"rgb(38, 38, 38)");
 
   await shot("landing-desktop");
@@ -155,6 +156,8 @@ try {
   assert.ok(await ev("document.getElementById('hero-create-submit').getBoundingClientRect().height>=44"));
   await send("Emulation.setEmulatedMedia",{features:[{name:"prefers-reduced-motion",value:"reduce"}]});
   assert.equal(await ev("getComputedStyle(document.getElementById('hero-create-submit')).transitionDuration"),"0s");
+  await send("Emulation.setEmulatedMedia",{features:[{name:"prefers-reduced-transparency",value:"reduce"}]});
+  assert.equal(await ev("getComputedStyle(document.querySelector('.header')).backdropFilter"),"none");
   await send("Emulation.setEmulatedMedia",{features:[]});
 
   await click("hero-qr-tab");
@@ -173,6 +176,35 @@ try {
   await login("alice");
   await wait("document.getElementById('qr-dialog')?.open");
   assert.equal(await ev("document.getElementById('qr-url').value"),"https://example.com/hero-draft");
+  await ev("document.getElementById('qr-mode').value='static';document.getElementById('qr-mode').dispatchEvent(new Event('change'))");
+  await wait("!document.getElementById('qr-download').disabled");
+  await click("qr-tab-style");
+  assert.equal(await ev("document.getElementById('qr-tab-style').getAttribute('aria-selected')"), "true");
+  await ev("document.querySelector('[name=qr-dots][value=dots]').click()");
+  assert.equal(await ev("getComputedStyle(document.querySelector('[name=qr-dots]:checked + .qr-shape-art')).boxShadow"), "none");
+  assert.equal(await ev("getComputedStyle(document.querySelector('[name=qr-dots]:checked + .qr-shape-art')).borderTopColor"), "rgba(0, 0, 0, 0)");
+  await ev("document.getElementById('qr-tab-style').focus()");
+  await send("Input.dispatchKeyEvent", {type:"keyDown",key:"ArrowRight",code:"ArrowRight"});
+  await send("Input.dispatchKeyEvent", {type:"keyUp",key:"ArrowRight",code:"ArrowRight"});
+  assert.equal(await ev("document.activeElement.id"), "qr-tab-export");
+  assert.equal(await ev("getComputedStyle(document.activeElement).outlineWidth"), "2px");
+  assert.equal(await ev("document.getElementById('qr-tab-export').getAttribute('aria-selected')"), "true");
+  await click("qr-tab-style");
+  await ev("document.activeElement.blur()");
+  await wait("!document.getElementById('qr-download').disabled");
+  await shot("qr-style-desktop");
+  await shot("qr-style-mobile",390,844);
+  await send("Emulation.setDeviceMetricsOverride", {width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await click("qr-preview-toggle");
+  assert.equal(await ev("document.getElementById('qr-preview-panel').hidden"), true);
+  await click("qr-minimize");
+  await wait("!document.getElementById('qr-dialog').open && !document.getElementById('qr-resume').classList.contains('hidden')");
+  await click("qr-resume");
+  await wait("document.getElementById('qr-dialog').open");
+  assert.equal(await ev("document.getElementById('qr-url').value"), "https://example.com/hero-draft");
+  assert.equal(await ev("document.querySelector('[name=qr-dots]:checked').value"), "dots");
+  await click("qr-preview-toggle");
+  assert.equal(await ev("document.getElementById('qr-preview-panel').hidden"), false);
   await click("qr-close");
   await send("Page.navigate", {url:"http://127.0.0.1:4174/"});
   await wait("document.readyState==='complete' && document.getElementById('hero-create-form')");
@@ -186,6 +218,15 @@ try {
   await wait("document.getElementById('page-title').textContent.includes('personal')");
   assert.equal(await ev("document.getElementById('open-qr').disabled"),false);
   assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"),"none");
+  await click("sidebar-toggle");
+  assert.equal(await ev("document.body.classList.contains('sidebar-collapsed')"), true);
+  assert.equal(await ev("document.querySelectorAll('.enterprise-nav .ui-icon use').length"), 6);
+  await click("sidebar-toggle");
+  await fill("destination", "https://example.com/retained-draft");
+  await click("creator-toggle");
+  assert.equal(await ev("document.getElementById('creator-panel').classList.contains('hidden')"), true);
+  await click("creator-toggle");
+  assert.equal(await ev("document.getElementById('destination').value"), "https://example.com/retained-draft");
   await fill("destination","https://example.com/personal");
   await fill("slug","my-private-browser-link");
   await ev("document.getElementById('link-form').requestSubmit()");
@@ -251,12 +292,17 @@ try {
   await fill("qr-url","https://example.com/my-private-qr");
   await fill("qr-design-title","My private QR");
   await wait("!document.getElementById('qr-download').disabled");
+  await click("qr-tab-export");
   await click("qr-save-profile");
   await wait("document.getElementById('designs').innerText.includes('My private QR')");
-  await click("qr-close");
+  await click("qr-minimize");
+  await wait("!document.getElementById('qr-dialog').open");
   await click("company-open");
   await wait("document.getElementById('workspace-label').textContent==='Northstar Company'");
   assert.equal(await ev("document.getElementById('designs').innerText.includes('My private QR')"),false);
+  assert.equal(await ev("document.getElementById('qr-resume').classList.contains('hidden')"),true);
+  await click("qr-resume");
+  assert.equal(await ev("document.getElementById('qr-dialog').open"),false);
 
 
   await click("open-qr");
@@ -267,6 +313,7 @@ try {
   await fill("qr-url", "https://example.com/direct");
   await wait("!document.getElementById('qr-download').disabled");
   await fill("qr-design-title", "Direct company QR");
+  await click("qr-tab-export");
   await click("qr-save-profile");
   await wait(
     "document.getElementById('designs').innerText.includes('Direct company QR')",
@@ -362,7 +409,10 @@ try {
     JSON.stringify(
       {
         passed: [
-          "landing desktop/mobile, link/QR handoff and automatic short names",
+          "layered theme, sidebar icons and collapse, creation panel hides without losing input",
+    "QR tabs support keyboard arrows, soft selection, hide preview, minimize/resume",
+    "minimized QR draft is discarded when changing workspace",
+    "landing desktop/mobile, link/QR handoff and automatic short names",
           "anonymous QR blocked and legacy JSON absent",
           "company request and admin approval",
           "admin-only original library",

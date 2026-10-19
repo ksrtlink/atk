@@ -9,6 +9,8 @@ import {
 } from "./qr-core.mjs";
 
 let dialog;
+let visibilityHandler = null;
+let minimized = false;
 let libraryPromise;
 let version = 0;
 let timer;
@@ -56,9 +58,9 @@ function mount() {
   dialog.setAttribute("aria-labelledby", "qr-heading");
   // Static interface markup only. URL and repository values are assigned using textContent/value.
   dialog.innerHTML = `
-    <div class="qr-header"><div><div class="eyebrow">LINK STUDIO / QR DESIGNER</div><h2 id="qr-heading">A code worth sharing.</h2></div><button class="icon-button" id="qr-close" aria-label="Close QR builder">×</button></div>
+    <div class="qr-header"><div><div class="eyebrow">LINK STUDIO / QR DESIGNER</div><h2 id="qr-heading">QR studio</h2></div><div class="qr-window-actions"><button class="text-button" id="qr-preview-toggle" aria-controls="qr-preview-panel" aria-expanded="true">Hide preview</button><button class="icon-button" id="qr-minimize" aria-label="Minimize QR builder"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#minus"></use></svg></button><button class="icon-button" id="qr-close" aria-label="Close QR builder"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#x"></use></svg></button></div></div>
     <div class="qr-layout">
-      <section class="qr-preview-panel" aria-label="QR code preview">
+      <section id="qr-preview-panel" class="qr-preview-panel" aria-label="QR code preview">
         <div class="qr-preview-label"><span class="eyebrow">LIVE PREVIEW</span><span id="qr-preview-tag">SVG</span></div>
         <div class="qr-board" id="qr-preview" aria-label="QR preview" role="img"></div>
         <p id="qr-preview-url" class="qr-preview-url"></p>
@@ -92,6 +94,69 @@ function mount() {
       </section>
     </div>`;
   document.body.append(dialog);
+  const controls = dialog.querySelector(".qr-controls");
+  const tabs = document.createElement("div");
+  tabs.className = "qr-tabs";
+  tabs.setAttribute("role", "tablist");
+  tabs.setAttribute("aria-label", "QR settings");
+  controls.prepend(tabs);
+  [...controls.querySelectorAll(":scope > .qr-section")].forEach((panel, index) => {
+    const name = ["content", "style", "export"][index];
+    panel.id = `qr-panel-${name}`;
+    panel.setAttribute("role", "tabpanel");
+    panel.setAttribute("aria-labelledby", `qr-tab-${name}`);
+    panel.tabIndex = 0;
+    const tab = document.createElement("button");
+    tab.id = `qr-tab-${name}`;
+    tab.type = "button";
+    tab.textContent = ["Content", "Style", "Export"][index];
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-controls", panel.id);
+    tab.onclick = () => selectTab(name);
+    tab.onkeydown = event => {
+      const keys = ["ArrowRight", "ArrowLeft", "Home", "End"];
+      if (!keys.includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === "Home" ? 0 : event.key === "End" ? 2 : (index + (event.key === "ArrowRight" ? 1 : 2)) % 3;
+      tabs.children[next].click();
+      tabs.children[next].focus();
+    };
+    tabs.append(tab);
+  });
+  const footer = document.createElement("div");
+  footer.className = "qr-footer";
+  for (const selector of ["#qr-quality", "#qr-error", ".qr-download-row", ".qr-private-note"])
+    footer.append(dialog.querySelector(selector));
+  dialog.append(footer);
+  // Long tracking definitions are available without crowding the content form.
+  const details = document.createElement("details");
+  details.className = "qr-tracking-details";
+  const summary = document.createElement("summary");
+  summary.textContent = "How QR tracking works";
+  $("qr-tracking-note").before(details);
+  details.append(summary, $("qr-tracking-note"));
+  $("qr-preview-toggle").onclick = () => {
+    const hide = !$("qr-preview-panel").hidden;
+    $("qr-preview-panel").hidden = hide;
+    dialog.querySelector(".qr-layout").classList.toggle("preview-hidden", hide);
+    $("qr-preview-toggle").textContent = hide ? "Show preview" : "Hide preview";
+    $("qr-preview-toggle").setAttribute("aria-expanded", String(!hide));
+  };
+  $("qr-minimize").onclick = () => {
+    if (downloading || savingProfile || $("qr-prepare-tracking").disabled) return;
+    minimized = true;
+    dialog.close();
+    visibilityHandler?.("minimized");
+  };
+  document.addEventListener("tinytrail:clear-qr", () => {
+    minimized = false;
+    visibilityHandler = saveHandler = prepareHandler = presetHandler = null;
+    trackedAsset = trackingKey = null;
+    clearTimeout(timer);
+    version++;
+    current = null;
+  });
+  selectTab("content");
   const palette = getComputedStyle(document.documentElement);
   for (const name of ["slate", "purple", "blue", "pink"]) {
     const color = palette.getPropertyValue(`--brand-${name}`).trim();
@@ -143,6 +208,7 @@ function mount() {
     clearTimeout(timer);
     version++;
     current = null;
+    if (!minimized) visibilityHandler?.("closed");
   });
   $("qr-saved").addEventListener("change", () => {
     if ($("qr-saved").value) {
@@ -384,8 +450,13 @@ export async function openQRBuilder({
   onPrepare = null,
   asset = null,
   trackingAvailable = false,
+  onVisibility = null,
 } = {}) {
   if (!dialog) mount();
+  minimized = false;
+  visibilityHandler = onVisibility;
+  visibilityHandler?.("open");
+  selectTab("content");
   saveHandler = onSave;
   prepareHandler = onPrepare;
   trackedAsset = asset;
@@ -403,12 +474,12 @@ export async function openQRBuilder({
   presetHandler = onPreset;
   let controls = $("qr-workspace-presets");
   if (!controls) {
-    controls = document.createElement("div");
+    controls = document.createElement("details");
     controls.id = "qr-workspace-presets";
     controls.className = "qr-preset-controls";
     controls.innerHTML =
-      '<label for="qr-preset-select">Workspace style preset</label><select id="qr-preset-select"><option value="">Choose a preset</option></select><label for="qr-preset-name">Save current style as a workspace preset</label><input id="qr-preset-name" maxlength="100" placeholder="e.g. Workspace print style"><button id="qr-preset-save" class="button secondary" type="button">Save workspace preset</button>';
-    dialog.querySelector(".qr-controls").prepend(controls);
+      '<summary>Workspace style presets</summary><label for="qr-preset-select">Workspace style preset</label><select id="qr-preset-select"><option value="">Choose a preset</option></select><label for="qr-preset-name">Save current style as a workspace preset</label><input id="qr-preset-name" maxlength="100" placeholder="e.g. Workspace print style"><button id="qr-preset-save" class="button secondary" type="button">Save workspace preset</button>';
+    $("qr-panel-style").append(controls);
   }
   const presetSelect = $("qr-preset-select");
   presetSelect.replaceChildren(new Option("Choose a preset", ""));
@@ -495,5 +566,21 @@ export async function openQRBuilder({
   }
   if (!dialog.open) dialog.showModal();
   downloadLabel();
+  schedule();
+}
+
+function selectTab(name) {
+  for (const tab of dialog.querySelectorAll('[role="tab"]')) {
+    const selected = tab.id === `qr-tab-${name}`;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    $(tab.getAttribute("aria-controls")).hidden = !selected;
+  }
+}
+export function resumeQRBuilder() {
+  if (!dialog || !minimized) return;
+  minimized = false;
+  dialog.showModal();
+  visibilityHandler?.("open");
   schedule();
 }

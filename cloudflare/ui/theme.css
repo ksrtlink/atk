@@ -1,8 +1,8 @@
 /* TinyTrail interface tokens. QR ink aliases preserve saved artwork and presets. */
 :root {
-  --cf-canvas:#ffffff;
-  --cf-border-subtle:#f0f0f0;
-  --cf-radius-sm:2px;
+  --cf-canvas:#f7f7f8;
+  --cf-border-subtle:#e5e5e7;
+  --cf-radius-sm:8px;
   --cf-primary:#ff5e1f;
   --cf-primary-hover:#ff7038;
   --cf-primary-active:#d63c01;
@@ -41,15 +41,17 @@
   --type-body-size: 14px;
   --type-mono-size: 12px;
   --type-body-leading: 1.15;
-  --theme-background: #ffffff;
-  --theme-surface: #f0f0f0;
-  --theme-paper: #fdfdfc;
+  --theme-background: #f7f7f8;
+  --theme-surface: #f1f1f3;
+  --theme-paper: #fcfcfd;
   --theme-on-primary: #262626;
   --theme-on-dark: #ffffff;
-  --radius-sm: 1px;
-  --radius-md: 2px;
-  --radius-lg: 3px;
-  --radius-xl: 4px;
+  --glass-surface: rgba(255,255,255,.85);
+  --glass-highlight: inset 0 1px 0 rgba(255,255,255,.9);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-pill: 9999px;
   --space-1: 4px;
   --space-2: 8px;
@@ -61,8 +63,8 @@
   --space-15: 60px;
   --space-28: 112px;
   --space-32: 128px;
-  --shadow-card: 0 4px 60px rgba(255,80,10,.06), 0 2px 12px rgba(0,0,0,.03);
-  --shadow-elevated: var(--shadow-card);
+  --shadow-card: 0 1px 2px rgba(28,28,35,.06), 0 4px 16px rgba(28,28,35,.025);
+  --shadow-elevated: 0 24px 80px rgba(28,28,35,.16), 0 4px 12px rgba(28,28,35,.08);
   --duration-fast: 100ms;
   --duration-base: 200ms;
   --duration-slow: 2000ms;

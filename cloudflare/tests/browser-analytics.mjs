@@ -225,12 +225,14 @@ try {
     "document.getElementById('qr-preview-url').textContent",
   );
   assert.match(encoded, /\/q\/[0-9a-f-]{36}$/);
+  await click("qr-tab-style");
   await ev("document.querySelector('[name=qr-dots][value=dots]').click()");
   await wait("!document.getElementById('qr-download').disabled");
   assert.equal(
     await ev("document.getElementById('qr-preview-url').textContent"),
     encoded,
   );
+  await click("qr-tab-export");
   await click("qr-save-profile");
   await wait(
     "document.getElementById('designs').innerText.includes('Tracked report')",

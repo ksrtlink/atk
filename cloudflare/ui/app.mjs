@@ -12,6 +12,8 @@ import {
 } from "./auth.mjs";
 const $ = (id) => document.getElementById(id);
 let analyticsView = null;
+let creatorHidden = false;
+try { creatorHidden = localStorage.getItem("tinytrail.creator-hidden") === "true"; } catch {}
 export const node = (tag, cls = "", value = "") =>
   Object.assign(document.createElement(tag), {
     className: cls,
@@ -123,6 +125,8 @@ function clearLibrary() {
   $("invite-result").textContent = "";
   $("transfer-items").replaceChildren();
   $("transfer-confirm").checked = false;
+  document.dispatchEvent(new Event("tinytrail:clear-qr"));
+  $("qr-resume").classList.add("hidden");
   $("qr-dialog")?.close();
   for (const id of ["qr-url", "qr-design-title", "qr-preset-name"])
     if ($(id)) $(id).value = "";
@@ -182,7 +186,7 @@ function ui() {
   $("request-company").classList.toggle("hidden", !personal || !!me?.workspaces.length);
   $("personal-account-note").classList.toggle("hidden", !personal);
   $("company-members-box").classList.toggle("hidden", personal);
-  document.querySelector('[data-view="team"]').textContent = personal ? "Workspace settings" : "Company & team";
+  document.querySelector('[data-view="team"] .nav-label').textContent = personal ? "Workspace settings" : "Company & team";
   document.querySelector('#view-links h2').firstChild.nodeValue = personal ? "Your links " : "Company links ";
   $("presets-note").textContent = personal ? "Styles saved here are private to your account." : "Styles saved here are shared with your company.";
   const switchable = !personal && !!me?.canSwitchCompanies;
@@ -194,8 +198,13 @@ function ui() {
     $("notice").textContent = "Your company assignment needs review. Contact the platform administrator.";
     $("access-form").classList.add("hidden");
   }
+  for (const item of document.querySelectorAll(".enterprise-nav button"))
+    item.title = item.querySelector(".nav-label")?.textContent.trim() || "";
   $("open-qr").disabled = !workspace;
-  $("creator-panel").classList.toggle("hidden", !workspace || !["links","designs"].includes(view));
+  $("creator-panel").classList.toggle("hidden", !workspace || !["links","designs"].includes(view) || creatorHidden);
+  $("creator-toggle").classList.toggle("hidden", !workspace || !["links","designs"].includes(view));
+  $("creator-toggle").textContent = creatorHidden ? "Show creation panel" : "Hide creation panel";
+  $("creator-toggle").setAttribute("aria-expanded", String(!creatorHidden));
   $("transfer-panel").classList.toggle(
     "hidden",
     !workspace ||
@@ -251,6 +260,7 @@ function render() {
       [
         "Edit",
         () => {
+          creatorHidden = false;
           editing = link;
           $("slug").value = link.slug;
           $("slug").disabled = true;
@@ -411,6 +421,9 @@ async function openQR(url = "", design = null) {
     design,
     asset,
     trackingAvailable: !!config.features?.trackedQR,
+    onVisibility: state => {
+      $("qr-resume").classList.toggle("hidden", state !== "minimized" || wid !== workspace?.id || uid !== account()?.uid);
+    },
     onPrepare: async (value) => {
       if (wid !== workspace?.id || uid !== account()?.uid)
         throw Error("The company changed. Reopen the designer.");
@@ -733,6 +746,21 @@ for (const id of ["slug", "destination"])
   };
 $("search").oninput = render;
 $("refresh").onclick = act(load);
+$("creator-toggle").onclick = () => {
+  creatorHidden = !creatorHidden;
+  try { localStorage.setItem("tinytrail.creator-hidden", String(creatorHidden)); } catch {}
+  ui();
+};
+$("sidebar-toggle").onclick = () => {
+  const collapsed = document.body.classList.toggle("sidebar-collapsed");
+  $("sidebar-toggle").setAttribute("aria-expanded", String(!collapsed));
+  $("sidebar-toggle").setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+};
+$("qr-resume").onclick = act(async () => {
+  if (!workspace) return;
+  const { resumeQRBuilder } = await import("./qr-builder.mjs");
+  resumeQRBuilder();
+});
 $("open-qr").onclick = act(() => openQR($("destination").value.trim() ? validateURL($("destination").value) : ""));
 $("design-new").onclick = act(() => openQR());
 $("result-qr").onclick = act(() => openQR($("result-link").href));

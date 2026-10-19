@@ -1,27 +1,35 @@
-# Cloudflare-inspired visual theme — 19 October 2026
+# TinyTrail layered interface — 19 October 2026
 
-Applied the user's pasted Cloudflare style reference to the landing page, dashboard, forms, bulk tools, analytics and QR designer. This is a native CSS interpretation of the supplied visual reference, not an official Cloudflare component package.
+Native CSS and DOM adaptation of the user's Cloudflare dashboard reference. This supersedes the earlier flat, 2px-corner interpretation while preserving TinyTrail's orange identity and supplied SVG wordmark.
 
-## Audit and scope
+## Design resources and implementation
 
-The application already shared orange #ff5e1f, system typography, gray canvas and 4px interface corners. The requested reference moves toward a white canvas, charcoal text, smaller corners, compact geometric typography, restrained elevation and a 4px spacing base. Routes, navigation, logo, form IDs, creation handoffs, authentication, company/personal isolation, QR artwork and stored data remain unchanged. No dependency or database migration was introduced.
+- Cloudflare Kumo LayerCard: https://kumo-ui.com/components/layer-card/ — nested neutral surfaces, restrained borders and soft elevation.
+- Cloudflare Kumo Sidebar: https://kumo-ui.com/components/sidebar/ — icon navigation and compact mode.
+- Phosphor Core: https://github.com/phosphor-icons/core — the same icon family used by Kumo examples. Exact build-only dependency 2.1.1; build emits a selected SVG sprite and includes its MIT notice. No icon JavaScript runtime or React migration.
 
-## Shared tokens and intentional adaptations
+`ui/theme.css` owns palette, radius, depth, glass and motion tokens. `ui/cloudflare-style.css` is the shared final presentation layer for landing, dashboard, bulk, analytics and dialogs. Shapes follow one scale: 6px small treatments, 8px controls, 12px panels and 16px hero/modal surfaces. Orange remains #ff5e1f; dark labels maintain contrast. QR ink and saved artwork retain their existing palette.
 
-`ui/theme.css` owns the shared palette, typography names, spacing, radii, shadows and timing tokens. `ui/cloudflare-style.css` applies them after the existing page-specific sheets. Both public pages load the same layer.
+The shell and dialog chrome use translucent white with native backdrop blur; data surfaces remain readable white over a pale gray canvas. Reduced-transparency preferences produce opaque surfaces. System fallbacks are used for the named FT Kunst Grotesk/Apercu families because licensed font files are absent.
 
-- Primary #ff5e1f; hover #ff7038; white background; #f0f0f0 surfaces/borders; #fdfdfc card/input paper; #262626 text. Primary and hover follow the structured reference rather than its conflicting prose values.
-- Corners: 1/2/3/4px tokens, with 2px standard controls and cards and 3px elevated dialogs.
-- App display 32px/500; headings 19px/400; body 14px; monospaced URLs 12px. Marketing display reaches 56px using the larger display guidance in the reference. Long paragraphs retain comfortable 1.5 leading; mobile inputs use 16px.
-- FT Kunst Grotesk and Apercu Mono Pro are the first font-family choices, with local Arial/system and Consolas/monospace fallbacks. The workspace contains no font files for those named families, and none were downloaded, embedded or represented as installed.
-- The reference's white muted-text value is unsuitable on white surfaces. Muted text uses #626262 (6.10:1 on white). Orange controls keep #262626 text (4.95:1 on #ff5e1f); white would be only 3.06:1. The reference's contrast estimates were not reused.
-- Fast/base transitions use 100/200ms with cubic-bezier(.19,1,.22,1). Reduced-motion preference disables transitions/animations. Primary mobile controls and navigation have at least 44px height; the QR dialog fits the mobile viewport without horizontal overflow.
-- Warm card/elevation shadows follow the meaningful layers in the supplied shadow value; redundant transparent layers are omitted. Dashboard data panels stay flat.
+## Interaction scope and safeguards
 
-QR ink presets and all saved shapes/colors remain independent of interface colors.
+- Sidebar has consistent Phosphor icons and an accessible collapse/expand control on desktop. Accessible labels and native titles remain in compact mode; mobile retains the scrollable labeled menu.
+- Creation panel can be hidden/restored without discarding inputs. Only that boolean preference is stored locally; edit actions reopen the panel.
+- QR dialog separates Content, Style and Export with accessible tab/tabpanel relationships, roving tabindex and Arrow/Home/End navigation. Long tracking explanation and workspace presets use native disclosures.
+- Preview hides/restores independently. Minimize closes the modal and exposes Resume QR draft; URL, shapes, colors, tab and tracking identity remain in memory. Resume regenerates the preview from that draft. New QR actions intentionally replace the draft.
+- Account/workspace changes clear minimized state, handler references, tracking identity and private form values. Hidden resume cannot reopen another workspace's draft.
+- Selected shapes use a tinted fill and checkmark rather than a box outline. Keyboard focus remains a distinct 2px neutral ring; mouse button focus does not add the ring.
+- Panels, tabs, dialogs and notices enter with a short opacity/6px translation. Buttons and navigation provide restrained hover/press feedback; sidebar collapse animates. Reduced-motion preference disables motion. No continuous animation loop was added.
 
-## Verification
+No backend routes, authentication policy, database schema, record contents, quotas, existing redirects or tracking semantics changed.
 
-31 backend tests passed. Updated enterprise browser checks passed for shared palette/radius consistency, body/control text colors, a mobile 44px primary target, reduced motion, both hero handoffs, automatic-name retry recovery, company approval, personal/company separation, QR saves, bulk exports and sign-out cleanup. The QR dialog was checked separately on desktop and mobile. Existing analytics browser checks passed, including decoded tracked QR images and matching CSV counts. Screenshots were visually reviewed; no horizontal overflow or JavaScript exceptions were found.
+## Verification and completion evidence
 
-Staging and production smoke checks verify both pages, shared tokens and anonymous private API restrictions. Browser authentication uses signed test tokens and simulated Firebase responses; actual email delivery was not retested for this visual-only change.
+- `npm run build` emits the selected icon sprite and updated shared assets.
+- `npm test`: 31 backend tests, including original eight links and workspace isolation.
+- `node tests/browser-enterprise.mjs`: desktop/mobile theme/layout, sidebar icons/collapse, creation hide/restore, QR tabs and keyboard arrows, soft selection, preview toggle, minimize/resume draft retention, workspace-switch draft cleanup, reduced motion/transparency, hero handoffs, QR saves, link retry, company access, bulk ZIP/vector PDF exports and sign-out cleanup.
+- `node tests/browser-analytics.mjs`: decoded individual/bulk tracked QR PNGs, unchanged identity through style edits, redirect updates, analytics/CSV reconciliation and privacy cleanup.
+- Desktop and mobile screenshots reviewed for landing, dashboard and QR export/style states. Screenshots wait for finite animations before capture.
+
+Browser tests use signed test identities and mocked Firebase responses in an isolated local harness; they do not send real verification emails. Production email delivery is outside this UI change.

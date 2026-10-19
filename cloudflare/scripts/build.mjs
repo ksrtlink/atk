@@ -30,6 +30,12 @@ for (const file of [
   "analytics.css",
 ])
   await cp(new URL(`ui/${file}`, project), new URL(file, output));
+const iconNames = ["link", "qr-code", "stack", "chart-bar", "users", "shield-check", "sidebar-simple", "eye", "minus", "x"];
+const symbols = await Promise.all(iconNames.map(async name => {
+  const svg = await readFile(new URL(`node_modules/@phosphor-icons/core/assets/regular/${name}.svg`, project), "utf8");
+  return `<symbol id="${name}" viewBox="0 0 256 256">${svg.replace(/^.*?<svg[^>]*>/s, "").replace(/<\/svg>\s*$/, "")}</symbol>`;
+}));
+await writeFile(new URL("icons.svg", output), `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor">${symbols.join("")}</svg>`);
 let html = await readFile(new URL("ui/index.html", project), "utf8");
 html = html.replace(
   "<!--ACCOUNT_DIALOG-->",
@@ -80,6 +86,7 @@ await writeFile(
 );
 const notices = [];
 for (const name of [
+  "@phosphor-icons/core",
   "fflate",
   "jspdf",
   "svg2pdf.js",

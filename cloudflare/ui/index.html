@@ -32,7 +32,7 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="app-sidebar">
       <a class="brand" href="/"
         ><img
           class="brand-logo"
@@ -60,13 +60,13 @@
       <button id="request-company" class="text-button hidden" type="button">Need a company workspace?</button>
 
       <nav class="enterprise-nav" aria-label="Workspace">
-        <button data-view="links" class="active">Link library</button
-        ><button data-view="designs">QR library</button
-        ><button data-view="bulk">Bulk studio</button
-        ><button data-view="analytics">Analytics</button
-        ><button data-view="team">Company &amp; team</button
+        <button data-view="links" class="active"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#link"></use></svg><span class="nav-label">Link library</span></button
+        ><button data-view="designs"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#qr-code"></use></svg><span class="nav-label">QR library</span></button
+        ><button data-view="bulk"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#stack"></use></svg><span class="nav-label">Bulk studio</span></button
+        ><button data-view="analytics"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#chart-bar"></use></svg><span class="nav-label">Analytics</span></button
+        ><button data-view="team"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#users"></use></svg><span class="nav-label">Company &amp; team</span></button
         ><button data-view="admin" id="admin-nav" class="hidden">
-          Platform admin
+          <svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#shield-check"></use></svg><span class="nav-label">Platform admin</span>
         </button>
       </nav>
 
@@ -77,7 +77,7 @@
     </aside>
 
     <div class="main-wrap">
-      <header class="topbar">
+      <header class="topbar"><button id="sidebar-toggle" class="icon-button" aria-label="Collapse sidebar" aria-controls="app-sidebar" aria-expanded="true"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#sidebar-simple"></use></svg></button>
         <span id="workspace-label">Company workspace</span
         ><button class="text-button" id="account-top">Sign in</button>
       </header>
@@ -97,6 +97,7 @@
           
         </div>
 
+        <div class="workspace-actions"><button id="creator-toggle" class="button secondary hidden" aria-controls="creator-panel" aria-expanded="true">Hide creation panel</button><button id="qr-resume" class="button secondary hidden"><svg class="ui-icon" aria-hidden="true"><use href="/manage/icons.svg#qr-code"></use></svg>Resume QR draft</button></div>
         <p id="notice" class="profile-notice" role="status">
           Opening your workspace…
         </p>

@@ -1,4 +1,4 @@
-/* Cloudflare-inspired styling supplied by the user. No application behavior. */
+/* Kumo-inspired native presentation: layered surfaces, glass chrome, restrained motion. */
 html { font-size:var(--type-body-size); }
 body, button, input, select, textarea { font-family:var(--font-sans); }
 body { color:var(--text); background:var(--theme-background); font-size:var(--type-body-size); letter-spacing:-.14px; line-height:var(--type-body-leading); }
@@ -29,8 +29,8 @@ input:focus, select:focus, textarea:focus { border-color:var(--text); }
 .company-context-label, .company-context-role, .field-hint { font-size:12px; color:var(--muted); }
 .company-context strong { font-size:14px; font-weight:500; }
 .workspace-context-switch button[aria-pressed="true"] { color:var(--text); border-color:var(--cf-primary); background:var(--accent-soft); }
-.box, .composer, .hero-tool, .link-list, .result, .profile-notice, .account-note, .link-preview, dialog { border:1px solid var(--line); border-radius:var(--radius-md); }
-.box, .composer, .link-list, .result { background:var(--surface); box-shadow:none; }
+.box, .composer, .hero-tool, .link-list, .result, .profile-notice, .account-note, .link-preview, dialog { border:1px solid var(--line); border-radius:var(--radius-lg); }
+.box, .composer, .link-list, .result { background:var(--surface); box-shadow:var(--shadow-card); }
 .box { padding:var(--space-4); margin-bottom:var(--space-4); }
 .box h2, .composer h2, .quick-composer h2 { font-size:var(--type-heading-size); line-height:1.2; font-weight:400; letter-spacing:-.48px; }
 .box p { font-size:14px; line-height:1.5; }
@@ -51,7 +51,7 @@ td { font-size:12px; }
 .analytics-metrics strong { font-weight:500; font-size:32px; letter-spacing:-.8px; }
 .analytics-metrics span { font-size:12px; }
 #analytics-comparison, #analytics-status { font-size:14px; line-height:1.5; }
-.qr-dialog, #account-dialog { box-shadow:var(--shadow-elevated); border-radius:var(--radius-lg); }
+.qr-dialog, #account-dialog { box-shadow:var(--shadow-elevated); border-radius:var(--radius-xl); }
 .qr-header h2 { font-size:24px; font-weight:500; letter-spacing:-.6px; }
 .qr-preview-panel { background:var(--theme-surface); }
 .qr-board { background:var(--surface); border-radius:var(--radius-md); }
@@ -116,4 +116,113 @@ footer { color:var(--muted); font-size:12px; }
 }
 @media(prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+}
+
+/* Surface hierarchy follows Kumo LayerCard; shell glass is a native CSS adaptation. */
+.ui-icon { width:18px; height:18px; flex:none; fill:currentColor; display:inline-block; vertical-align:middle; }
+.workspace-actions, .qr-window-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.workspace-actions { margin:-8px 0 20px; }
+.workspace-actions:has(> .hidden:only-child) { display:none; }
+#qr-resume { gap:8px; }
+.sidebar, .topbar, .header, .qr-header { background:var(--glass-surface); backdrop-filter:blur(18px) saturate(120%); box-shadow:var(--glass-highlight); }
+.topbar { position:sticky; top:0; z-index:4; }
+#workspace-label { margin-right:auto; }
+.enterprise-nav button { display:flex; align-items:center; gap:10px; color:var(--muted); transition:background-color 150ms, color 150ms, transform 150ms; }
+.enterprise-nav button:hover { color:var(--text); transform:translateX(2px); }
+.enterprise-nav button.active { color:var(--text); background:var(--theme-surface); box-shadow:inset 0 1px 0 #fff, 0 1px 2px #1c1c230a; }
+.enterprise-nav button.active .ui-icon { color:var(--cf-primary-active); }
+.company-context { background:var(--surface); box-shadow:var(--shadow-card); }
+.quick-composer { background:linear-gradient(180deg,#fff,var(--theme-paper)); border:1px solid var(--line); box-shadow:var(--shadow-card), 0 0 0 5px #f0f0f280; }
+.box, .link-list, .result, .profile-notice { border-radius:var(--radius-lg); }
+.button, .icon-button, .text-button { transition:background-color 160ms var(--ease-theme), box-shadow 160ms var(--ease-theme), transform 160ms var(--ease-theme); }
+.button.primary { box-shadow:inset 0 1px 0 #ffffff52, 0 2px 3px #b838001f; }
+.button:hover { transform:translateY(-1px); }
+.button:active, .icon-button:active { transform:translateY(1px); }
+.button.secondary, .row-actions button, input, select, textarea { box-shadow:inset 0 1px 1px #1c1c2304, 0 1px 2px #1c1c2306; }
+input:focus, select:focus, textarea:focus { border-color:#a3a3ab; }
+:where(button, a, input, select, textarea, summary):focus:not(:focus-visible) { outline:none; }
+:where(button, a, input, select, textarea, summary):focus-visible { outline:2px solid #595964; outline-offset:3px; }
+.workspace-context-switch button[aria-pressed="true"] { border-color:var(--line); box-shadow:inset 0 1px 0 white, 0 1px 2px #1c1c2310; }
+.qr-shape input:checked + .qr-shape-art { border-color:transparent; background:var(--accent-tint); box-shadow:none; }
+.qr-shape input:checked ~ span:last-child { color:var(--text); font-weight:600; }
+.qr-shape input:checked ~ span:last-child::after { content:" ✓"; color:var(--cf-primary-active); }
+.qr-shape input:focus-visible + .qr-shape-art { outline:2px solid #595964; outline-offset:3px; }
+.qr-swatch[aria-pressed=true] { outline:none; box-shadow:0 0 0 2px white, 0 0 0 3px #b0b0b7; }
+.qr-dialog { width:min(940px,calc(100vw - 40px)); border-radius:var(--radius-xl); overflow:auto; }
+.qr-dialog::backdrop, #account-dialog::backdrop { background:#20202b38; backdrop-filter:blur(6px); }
+.qr-header { padding:16px 20px; }
+.qr-header h2 { margin:0; font-size:21px; }
+.qr-header .eyebrow { display:none; }
+.qr-layout { grid-template-columns: minmax(240px,.85fr) minmax(0,1.15fr); background:var(--surface); }
+.qr-layout.preview-hidden { grid-template-columns:minmax(0,1fr); }
+.qr-preview-panel { position:static; min-height:0; padding:24px; align-self:stretch; background:linear-gradient(145deg,#f6f6f8,#ededf0); }
+.qr-preview-label { margin-bottom:20px; }
+.qr-preview-foot { display:none; }
+.qr-board { max-width:280px; border-radius:var(--radius-lg); box-shadow:var(--shadow-card); }
+.qr-preview-url { margin-top:16px; }
+.qr-scan-note { margin-bottom:0; }
+.qr-controls { padding:16px 20px; }
+.qr-tabs { display:flex; padding:4px; gap:4px; border-radius:10px; background:var(--theme-surface); }
+.qr-tabs button { flex:1; min-height:36px; padding:8px; border:0; background:transparent; color:var(--muted); font:inherit; font-size:13px; }
+.qr-tabs button[aria-selected="true"] { background:white; color:var(--text); box-shadow:0 1px 3px #1c1c231a; }
+.qr-section { border:0; padding:16px 0 0; }
+.qr-step { display:none; }
+.qr-tracking-details, .qr-preset-controls { font-size:12px; line-height:1.5; margin:12px 0; }
+.qr-tracking-details summary, .qr-preset-controls summary { cursor:pointer; color:var(--muted); }
+.qr-tracking-details .field-hint { margin-bottom:0; }
+.qr-footer { padding:12px 20px 16px; border-top:1px solid var(--line); background:var(--glass-surface); }
+.qr-footer .qr-quality { margin:0 0 8px; font-size:12px; line-height:1.5; }
+.qr-download-row { margin:0; }
+.qr-private-note { margin:10px 0 0; }
+#qr-profile { margin:16px 0 0; padding:12px; background:var(--theme-paper); }
+.hero-tool { border-radius:var(--radius-xl); box-shadow:var(--shadow-card), 0 0 0 6px #ededf080; }
+.site-frame { background:white; }
+.hero-tool-wrap { padding-top:40px; padding-bottom:40px; }
+.tool-qr-feature { background:var(--theme-paper); }
+#creator-panel, [id^="view-"]:not(.hidden), .hero-tool, .qr-dialog[open], #account-dialog[open], .toast:not(.hidden) { animation:surface-enter 240ms var(--ease-theme) both; }
+.qr-section:not([hidden]) { animation:surface-enter 180ms var(--ease-theme) both; }
+@keyframes surface-enter { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+[hidden] { display:none!important; }
+@media(min-width:901px) {
+  .sidebar-collapsed .sidebar { width:68px; padding-left:12px; padding-right:12px; }
+  .sidebar-collapsed .main-wrap { margin-left:68px; }
+  .sidebar-collapsed .brand { width:42px; overflow:hidden; }
+  .sidebar-collapsed .brand-logo { min-width:151px; }
+  .sidebar-collapsed .brand-sub, .sidebar-collapsed .company-context, .sidebar-collapsed #library-contexts, .sidebar-collapsed #request-company, .sidebar-collapsed .sidebar-bottom { display:none!important; }
+  .sidebar-collapsed .enterprise-nav .nav-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .sidebar-collapsed .enterprise-nav button { justify-content:center; padding:12px; }
+}
+@media(max-width:900px) { #sidebar-toggle { display:none; } }
+@media(max-width:650px) {
+  .qr-dialog { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); }
+  .qr-header { padding:12px; gap:8px; }
+  .qr-window-actions { flex-wrap:nowrap; gap:2px; }
+  .qr-header h2 { font-size:18px; white-space:nowrap; }
+  .qr-window-actions .text-button { font-size:12px; padding:4px; }
+  .qr-layout { grid-template-columns:minmax(0,1fr); }
+  .qr-preview-panel { padding:16px; border-right:0; border-bottom:1px solid var(--line); }
+  .qr-preview-label { display:none; }
+  .qr-board { max-width:180px; }
+  .qr-preview-url { margin:10px 0 0; }
+  .qr-scan-note { font-size:11px; }
+  .qr-controls, .qr-footer { padding:12px; }
+  .qr-tabs button { min-height:44px; }
+  .workspace-actions { margin:0 0 16px; }
+}
+@media(prefers-reduced-transparency:reduce) {
+  .sidebar, .topbar, .header, .qr-header, .qr-footer { background:#fff; backdrop-filter:none; }
+  .qr-dialog::backdrop, #account-dialog::backdrop { backdrop-filter:none; background:#20202b60; }
+}
+@media(prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+  .button:hover, .button:active, .enterprise-nav button:hover { transform:none; }
+}
+
+.search:focus-within { outline:none; border-color:#a3a3ab; }
+.search:has(input:focus-visible) { outline:2px solid #595964; outline-offset:3px; }
+
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, .qr-controls select:focus-visible { outline:2px solid #73737f; outline-offset:2px; }
+@media(prefers-reduced-motion:no-preference) {
+  .sidebar { transition:width 200ms var(--ease-theme); }
+  .main-wrap { transition:margin-left 200ms var(--ease-theme); }
 }
