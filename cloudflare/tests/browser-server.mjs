@@ -125,6 +125,7 @@ const env = {
                 ".css": "text/css",
                 ".json": "application/json",
                 ".svg": "image/svg+xml",
+                ".webp": "image/webp",
               }[extname(path)] || "application/octet-stream",
             "Cache-Control": "no-store",
           },

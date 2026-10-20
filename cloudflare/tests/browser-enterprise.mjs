@@ -95,17 +95,13 @@ export const fill = (id, value) =>
     `document.getElementById(${JSON.stringify(id)}).value=${JSON.stringify(value)};document.getElementById(${JSON.stringify(id)}).dispatchEvent(new Event('input',{bubbles:true}))`,
   );
 export async function login(id) {
-  await click("account-top");
-  await click("auth-login-tab");
-  await fill("auth-email", id + "@example.com");
-  await fill("auth-password", "password-test");
-  await ev("document.getElementById('auth-form').requestSubmit()");
-  await wait("!document.getElementById('account-dialog').open");
+  await send('Page.navigate',{url:'http://127.0.0.1:4174/signin/?next='+encodeURIComponent('/manage/')});
+  await wait("document.getElementById('signin-submit') && !document.getElementById('signin-submit').disabled");
+  await fill('signin-email',id+'@example.com');await fill('signin-password','password-test');
+  await ev("document.getElementById('signin-form').requestSubmit()");
+  await wait("location.pathname==='/manage/' && document.getElementById('account-top') && !document.body.classList.contains('auth-pending')");
 }
-export async function logout() {
-  await click("account-top");
-  await click("auth-signout");
-}
+export async function logout() {await click('account-top');await click('auth-signout');await wait("location.pathname==='/' && document.getElementById('home-signin') && !document.getElementById('home-signin').hidden");}
 export async function shot(name, width = 1440, height = 1000) {
   await send("Emulation.setDeviceMetricsOverride", {
     width,
@@ -132,9 +128,7 @@ export async function shot(name, width = 1440, height = 1000) {
 }
 try {
   await send("Page.enable");
-  await send("Page.addScriptToEvaluateOnNewDocument", {
-    source: "sessionStorage.removeItem('link-studio.account');sessionStorage.removeItem('tinytrail.workspace')",
-  });
+  await ev("sessionStorage.removeItem('link-studio.account');sessionStorage.removeItem('tinytrail.workspace')");
   await send("Runtime.enable");
   await send("Network.enable");
   await send("Network.setCacheDisabled", { cacheDisabled: true });
@@ -168,14 +162,10 @@ try {
   assert.equal(await ev("document.getElementById('hero-qr-tab').getAttribute('aria-pressed')"),"true");
   await fill("hero-url","https://example.com/hero-draft");
   await ev("document.getElementById('hero-create-form').requestSubmit()");
-  await wait("location.pathname==='/manage/' && document.getElementById('account-dialog')?.open");
+  await wait("location.pathname==='/signin/' && document.getElementById('signin-submit')");
   assert.equal(await ev("JSON.parse(sessionStorage.getItem('tinytrail.create-draft')).tool"),"qr");
-  await wait(
-    "document.getElementById('notice')?.textContent.includes('Sign in')",
-  );
-  assert.equal(await ev("document.getElementById('open-qr').disabled"), true);
-  assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"), "none");
-  assert.equal(await ev("getComputedStyle(document.getElementById('assigned-company')).display"), "none");
+  assert.equal(await ev("!!document.querySelector('.sidebar')"),false);
+  assert.equal(await ev("!!document.getElementById('open-qr')"),false);
   assert.equal(await ev("fetch('/manage/links.json').then(r=>r.status)"), 404);
   await login("alice");
   await wait("document.getElementById('qr-dialog')?.open");
@@ -216,9 +206,7 @@ try {
   await wait("document.readyState==='complete' && document.getElementById('hero-create-form')");
   await fill("hero-url","https://example.com/link-draft");
   await ev("document.getElementById('hero-create-form').requestSubmit()");
-  await wait("location.pathname==='/manage/' && document.getElementById('account-dialog')?.open");
-  await login("alice");
-  await wait("document.getElementById('destination').value==='https://example.com/link-draft'");
+  await wait("location.pathname==='/manage/' && document.getElementById('destination')?.value==='https://example.com/link-draft'");
   assert.equal(await ev("document.getElementById('list-count').textContent"),"0");
   assert.equal(await ev("sessionStorage.getItem('tinytrail.create-draft')"),null);
   await ev("document.querySelector('[data-view=people]').click()");
@@ -620,8 +608,7 @@ try {
   await shot("resource-public-desktop",1440,1000);
   await shot("resource-public-mobile",390,844);
   await send("Page.navigate",{url:"http://127.0.0.1:4174/manage/"});
-  await wait("document.getElementById('notice').textContent.includes('Sign in')");
-  await login("alice");
+  await wait("document.getElementById('account-top') && !document.body.classList.contains('auth-pending')");
   await ev("document.querySelector('[data-view=resources]').click()");
   await wait("document.querySelector('#resource-list button')");
   await ev("document.querySelector('#resource-list button').click()");
@@ -637,16 +624,8 @@ try {
   await ev("fetch('/qa/fail-activity',{method:'POST'})");await click("activity-refresh");await wait("!document.getElementById('activity-error').classList.contains('hidden')");assert.equal(await ev("document.getElementById('activity-rows').childElementCount"),0);await click("activity-refresh");await wait("document.querySelectorAll('#activity-rows tr').length===50");
   await send("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
   await logout();
-  assert.equal(
-    await ev("document.getElementById('links').childElementCount"),
-    0,
-  );
-  assert.equal(await ev("document.getElementById('qr-url')?.value || ''"), "");
-  assert.equal(await ev("document.getElementById('bulk-utm-source')?.value || ''"), "");
-  assert.equal(await ev("document.getElementById('resource-title').value"), "");
-  assert.equal(await ev("document.getElementById('resource-items').childElementCount"), 0);
-  assert.equal(await ev("document.getElementById('people-name')?.value || ''"), "");
-  assert.equal(await ev("document.getElementById('activity-rows')?.childElementCount||0"),0);assert.equal(await ev("document.getElementById('activity-nav').classList.contains('hidden')"),true);
+  assert.equal(await ev("!!document.querySelector('.sidebar') || !!document.getElementById('links') || !!document.getElementById('qr-url') || !!document.getElementById('activity-rows')"),false);
+  assert.equal(await ev("sessionStorage.getItem('link-studio.account')"),null);
   assert.equal(errors.length, 0, JSON.stringify(errors));
   console.log(
     JSON.stringify(

@@ -1,3 +1,4 @@
+import {signInURL} from './auth-navigation.mjs';
 import { mountCampaignBuilder } from "./utm.mjs";
 import { validateSlug, validateURL } from "./core.mjs";
 import {
@@ -166,6 +167,7 @@ function ui() {
   $("account-top").textContent = user ? "My account" : "Sign in";
   $("auth-signedin").classList.toggle("hidden", !user);
   $("auth-signedout").classList.toggle("hidden", !!user);
+  $("auth-heading").textContent = user ? "Your account" : "Welcome to Tinytrail.";
   $("auth-current-email").textContent = user?.email || "";
   $("auth-verified-note").textContent = me
     ? "Email verified. Your library is private."
@@ -503,6 +505,7 @@ function openAccount() {
   if (!config?.authReady)
     throw Error("Email accounts are temporarily unavailable.");
   ui();
+  if(!account()){location.assign(signInURL(location.pathname+location.search+location.hash));return;}
   $("account-dialog").showModal();
 }
 async function adminView() {
@@ -617,6 +620,8 @@ $("auth-signout").onclick = () => {
   sessionStorage.removeItem("tinytrail.create-draft");
   signOut();
   $("account-dialog").close();
+  document.body.classList.add("auth-pending");
+  location.assign("/");
 };
 onAccountChange(() => {
   epoch++;
@@ -848,14 +853,18 @@ $("export").onclick = () =>
 try {
   config = await api("/api/config", { auth: false });
   await initializeAuth(config);
-  await load();
-  if (!account() && (new URLSearchParams(location.search).has("request") || new URLSearchParams(location.search).has("create"))) {
-    register = true;
-    $("auth-register-tab").click();
-    openAccount();
+  if(!account()) {
+    location.replace(signInURL(location.pathname+location.search+location.hash,new URLSearchParams(location.search).has("request")));
+  } else {
+    // Verify identity before revealing the dashboard; API permissions remain authoritative.
+    const response=await fetch('/api/me',{headers:{Authorization:'Bearer '+await token()},cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(20000)});
+    if(response.status===401||response.status===403)location.replace(signInURL(location.pathname+location.search+location.hash));
+    else if(!response.ok)throw Error('Could not open your workspace. Please refresh.');
+    else {await load();document.body.classList.remove('auth-pending');}
   }
 } catch (e) {
-  error(e.message);
+  if(!me)location.replace(signInURL(location.pathname+location.search+location.hash));
+  else {document.body.classList.remove("auth-pending");error(e.message);}
 }
 
 let deleteDialog, pendingDelete;
@@ -890,3 +899,7 @@ function confirmDelete(link) {
   $("delete-link-error").textContent = "";
   deleteDialog.showModal();
 }
+
+// History restoration must revalidate storage and identity before revealing private content.
+window.addEventListener('pagehide',()=>document.body.classList.add('auth-pending'));
+window.addEventListener('pageshow',async event=>{if(!event.persisted)return;document.body.classList.add('auth-pending');clearLibrary();try{await initializeAuth(config);if(!account()){location.replace(signInURL(location.pathname+location.search+location.hash));return;}const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+await token(true)},cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(20000)});if(!r.ok){location.replace(signInURL(location.pathname+location.search+location.hash));return;}await load();document.body.classList.remove('auth-pending');}catch{location.replace(signInURL(location.pathname+location.search+location.hash));}});

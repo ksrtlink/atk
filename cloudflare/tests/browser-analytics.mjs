@@ -189,9 +189,7 @@ try {
   await send("Runtime.enable");
   await send("Network.enable");
   await send("Network.setCacheDisabled", { cacheDisabled: true });
-  await send("Page.addScriptToEvaluateOnNewDocument", {
-    source: "sessionStorage.removeItem('link-studio.account');sessionStorage.removeItem('tinytrail.workspace')",
-  });
+  await ev("sessionStorage.removeItem('link-studio.account');sessionStorage.removeItem('tinytrail.workspace')");
   await send("Fetch.enable", {
     patterns: [
       { urlPattern: "https://identitytoolkit.googleapis.com/*" },
@@ -199,14 +197,12 @@ try {
     ],
   });
   await send("Page.navigate", { url: base + "/manage/" });
-  await wait(
-    "document.getElementById('notice')?.textContent.includes('Sign in')",
-  );
-  await click("account-top");
-  await fill("auth-email", "alice@example.com");
-  await fill("auth-password", "password-test");
-  await ev("document.getElementById('auth-form').requestSubmit()");
-  await wait("!document.getElementById('account-dialog').open");
+
+  await wait("location.pathname==='/signin/' && document.getElementById('signin-submit') && !document.getElementById('signin-submit').disabled");
+  await fill("signin-email", "alice@example.com");
+  await fill("signin-password", "password-test");
+  await ev("document.getElementById('signin-form').requestSubmit()");
+  await wait("location.pathname==='/manage/' && !document.body.classList.contains('auth-pending')");
   await ev("document.querySelector('[data-view=analytics]').click()");
   await wait(
     "document.getElementById('analytics-total').textContent==='Not measured'",
@@ -329,14 +325,9 @@ try {
   );
   await click("account-top");
   await click("auth-signout");
-  assert.equal(
-    await ev("document.getElementById('analytics-total').textContent"),
-    "",
-  );
-  assert.equal(
-    await ev("document.getElementById('qr-tracked-url').textContent"),
-    "",
-  );
+  await wait("location.pathname==='/' && document.getElementById('home-signin') && !document.getElementById('home-signin').hidden");
+  assert.equal(await ev("!!document.getElementById('analytics-total') || !!document.getElementById('qr-tracked-url')"),false);
+  assert.equal(await ev("sessionStorage.getItem('link-studio.account')"),null);
   assert.deepEqual(errors, []);
   console.log(
     JSON.stringify(

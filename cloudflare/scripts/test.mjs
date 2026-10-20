@@ -14,3 +14,5 @@ await import("../tests/health.test.mjs");
 await import("../tests/contact-exchange.test.mjs");
 await import("../tests/audit.test.mjs");
 await import("../tests/google-wallet.test.mjs");
+
+await import('../tests/auth-navigation.test.mjs');

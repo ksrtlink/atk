@@ -35,7 +35,7 @@ export async function initializeAuth(settings){
   if(!config.authReady)return;
   try{
     const stored=JSON.parse(sessionStorage.getItem(storageKey)||'null');
-    if(stored?.refreshToken && stored.email && stored.uid){session={...stored,idToken:'',expiresAt:0};await token();emit();}
+    if(stored?.refreshToken && stored.email && stored.uid){session={...stored,idToken:'',expiresAt:0};await token();emit();}else{session=null;}
   }catch{session=null;persist();}
 }
 export async function signIn(email,password){const data=await identity('signInWithPassword',{email,password,returnSecureToken:true});accept(data);}

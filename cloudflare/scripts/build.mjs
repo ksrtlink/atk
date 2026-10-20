@@ -30,6 +30,7 @@ for (const file of [
   "contact-inbox.mjs",
   "activity.mjs",
   "auth.mjs",
+  "auth-navigation.mjs",
   "accounts.css",
   "tinytrail.css",
   "enterprise.css",
@@ -91,6 +92,9 @@ landing = landing.replaceAll(
   }),
 );
 await writeFile(new URL("public/index.html", project), landing);
+await mkdir(new URL("public/signin/", project), {recursive:true});
+await cp(new URL("ui/signin.html", project), new URL("public/signin/index.html", project));
+for(const file of ["signin.css","signin.mjs","signin-art.webp"]) await cp(new URL("ui/"+file,project),new URL("public/"+file,project));
 for (const file of ["landing.css", "landing.mjs", "theme.css", "cloudflare-style.css", "resource-page.css"])
   await cp(new URL("ui/" + file, project), new URL("public/" + file, project));
 await writeFile(
