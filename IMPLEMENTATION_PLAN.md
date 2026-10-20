@@ -336,3 +336,5 @@ Verify current versions before relying on provider details.
 - Apple Wallet identifiers/certificates: https://developer.apple.com/help/account/capabilities/create-wallet-identifiers-and-certificates/
 
 Release 1 is delivered; its verification and limits are recorded in `cloudflare/RELEASE1_EVIDENCE.md`. Continuous full-plan implementation, including staff features, is now explicitly authorized by the user. Preserve the release acceptance gates and use `cloudflare/FULL_PLAN_PROGRESS.md` for current remaining work.
+
+20 October 2026 decisions: prioritize Google Wallet; defer new paid Apple setup. The contact-exchange-v1 policy, including metadata-only activity retention, is explicitly approved and deployment availability activated with per-card owner opt-in. HubSpot is the selected CRM; the user has neither a HubSpot account nor Google Wallet issuer/class set up yet. Provider implementation/connection and actual device gates remain open; see cloudflare/REMAINING_ACCEPTANCE.md.

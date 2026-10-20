@@ -1,12 +1,12 @@
 # Voluntary contact exchange
 
-Implementation is prepared and tested. Public collection remains disabled pending the separate contact-details policy decision. Anonymous analytics approval does not activate personal-data collection. No CRM is connected and submitting a form sends no email or other outbound message.
+The user approved contact-exchange-v1 on 20 October 2026, including metadata-only activity retention. Collection is available only where the deployment is activated and the owner explicitly enables each card. No CRM is connected and submitting a form sends no email or other outbound message.
 
 ## Contract and permissions
 
 A published staff card can offer Share your details. Viewing the card and Save contact never require a submission. Required fields are name (100 characters) and email (254); optional organization (120), phone (50) and message (1000). The form clearly identifies the receiving public profile and any saved event.
 
-Proposed policy contact-exchange-v1: receiving person and workspace owners may follow up on the conversation; details expire after 90 days; explicit required consent does not subscribe the visitor to marketing. The exact statement, version, acceptance time, expiration, receiving profile/workspace and validated event snapshot are stored with each accepted contact. Policy text is versioned in source and cannot be customized to silently change the purpose.
+Approved policy contact-exchange-v1: receiving person and workspace owners may follow up on the conversation; details expire after 90 days; explicit required consent does not subscribe the visitor to marketing. The exact statement, version, acceptance time, expiration, receiving profile/workspace and validated event snapshot are stored with each accepted contact. The public form additionally explains that opaque item/action/time activity records remain for 90 days after each action without copies of submitted details. Policy text is versioned in source and cannot be customized to silently change the purpose.
 
 | Actor | Allowed |
 | --- | --- |
@@ -52,3 +52,16 @@ Production migration 0013 and Worker 9cebe0e0-71c2-4d65-adb2-ca1ad2d7127c deploy
 The disabled-card inbox remains accessible to authorized owners/assigned employees. The browser regression covers reopening it after card deactivation and removing it on privacy reset. Export pagination is verified across 507 contacts with one CSV header and no missing addresses. Final deployed contact UI asset hashes match the tested build; collection flags and anonymous-access gates were rechecked in both environments.
 
 The owner activity trail added in migration 0014 stores contact receipt/review/deletion actions with opaque item IDs and timestamps, without copies of submitted fields or consent bodies. Deleting a contact removes its submitted fields; action metadata is retained for up to 90 days after each action. Receiving employees can still manage their assigned inbox but cannot read the workspace-wide owner activity trail. Public contact collection remains disabled pending the separate policy approval.
+
+## Approved activation: 20 October 2026 (Dubai)
+
+The user explicitly approved name/email plus optional organization/phone/message, 90-day detail retention, receiving-employee/workspace-owner access, CSV/deletion, no marketing subscription, and opaque item/action/time activity retained for 90 days after each action. Google first and HubSpot selection do not change that purpose. Apple paid setup is deferred.
+
+- Staging Worker cd9bf5dd-3624-4bc3-9cfe-711e01e4d6ec: separate random signing secret, approved flags, full deployed public-route form checks passed. A synthetic published card first returned 404 without owner opt-in, then accepted its valid event form after controlled opt-in. Foreign Origin and missing consent were rejected. A signed POST returned 303; retry returned 303 without duplication. D1 verified one event-attributed contact, exactly 90-day expiry, one metadata-only received activity record, no foreign-key violations, private anonymous 401 and 404 after disable. Synthetic profile/event/contact/receipt/activity/workspace/identity were removed. Hashed quota buckets expire normally within 24 hours.
+- Production Worker 1195b367-f0ac-4400-b1cc-1a2d1e7f9971: separate signing secret provisioned through Wrangler stdin without writing it to repository/config/logs; CONTACT_EXCHANGE_ENABLED=true and CONTACT_EXCHANGE_POLICY=contact-exchange-v1. No database migration was needed; migration 0013 was already applied. D1 Time Travel recovery bookmark captured before activation: 000000f1-00000000-0000510a-2da70eb89e8d5c642b10fcdb9bde3c01.
+- Production checks: public configuration advertises contactExchange=true; landing/studio return 200; people/inbox/activity/Wallet APIs reject anonymous access with 401; unissued exchange route returns 404. Foreign-key check is empty, all eight legacy links remain, and contact_settings has zero rows/zero opted-in cards at activation. No production synthetic contact or profile was created. A real-user production pilot is not claimed by these staging checks.
+- Verification: npm test passed all 129 registered tests, including the public activity-retention notice assertion; build and staging-isolation checks passed. No existing frontend assets changed. Existing native-browser form, desktop/mobile and permission regressions remain applicable; this release changes policy disclosure in server-rendered form HTML and deployment activation.
+
+To receive contacts: in Contact cards, open a saved card, open Contact inbox, check Allow visitors to share their details and Save collection setting. The card must be published. Event links can then be created in that inbox. Personal-account owners can use the same flow; no company membership is required.
+
+Rollback: set CONTACT_EXCHANGE_ENABLED=false and redeploy compatible code. Leave the signing secret and stored contacts intact for recovery; private routes also become unavailable while disabled. Hourly retention still runs. Existing card/vCard/QR identities remain valid; do not roll back additive tables or force opt-in on unrelated cards.

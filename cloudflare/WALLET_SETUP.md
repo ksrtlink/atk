@@ -2,6 +2,8 @@
 
 Google connection diagnostics are prepared. Pass issuance, stable issuance records, pass updates, provider approval and actual phone installation remain incomplete. No Add to Wallet button or unsigned pass has been added. No Apple membership or paid service was purchased. The existing Firebase project authenticates Tinytrail users; it does not establish a Google Wallet issuer.
 
+The user chose Google first on 20 October 2026 and confirmed that no issuer account or class has been set up. New paid Apple enrollment is explicitly deferred.
+
 ## Google: one-time account setup
 
 1. The account owner creates a Google Wallet issuer in the Google Pay & Wallet console and chooses the actual public issuer name. Review the provider terms personally; the app does not accept them on your behalf.
@@ -20,7 +22,7 @@ Missing configuration does not contact Google. Production and staging defaults r
 
 The registered tests verify the OAuth grant's exact audience/scope/claims, independent Node/OpenSSL-backed RSA signature verification, fixed hosts and request methods, absence of secrets in results, weak/invalid keys, missing setup, redirects/errors, malformed/oversized responses, timeout handling and verified platform-admin permissions. A temporary deployed Cloudflare probe generated a synthetic key in memory and signed the actual assertion; its public key/signature were independently verified with Node crypto. Provider responses in that probe were synthetic contract fixtures. It did not authenticate to a real Google issuer or validate pass creation, updates, publishing or Android installation.
 
-## Apple: account and budget decision
+## Apple: deferred by user
 
 Apple requires a Pass Type ID and its signing certificate, created by an Account Holder or Admin. Apple currently lists Developer Program membership at US$99/year; an existing eligible team membership may avoid a new enrollment. Confirm which account/team should issue Tinytrail passes before creating signing identities or paying for a membership. No signing key should be sent through chat or stored in the checkout.
 
@@ -33,7 +35,7 @@ After that setup, the remaining implementation must validate signing credentials
 - Apple signing, registration/update/push flow and actual iPhone installation/update with the correct QR destination.
 - Credential expiry/rotation/failure handling and emergency controls for the chosen issuer identities.
 - Existing staff gates: actual iPhone/Android vCard import, supported email-client signature paste, meeting-app framing and physical print scanning.
-- Contact exchange remains off pending its separate policy approval. CRM remains unselected and unconnected. Neither gate is silently waived by Wallet research.
+- Contact policy contact-exchange-v1 is approved; activation evidence is recorded in CONTACT_EXCHANGE.md. HubSpot is the selected CRM, but its account is not set up or connected; see HUBSPOT_SETUP.md.
 
 ## Primary references checked 20 October 2026 (Dubai)
 

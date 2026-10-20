@@ -17,7 +17,7 @@ async function fixture(){
  p=(await data('/api/people/'+p.id+'/publish',{method:'POST',body:{version:p.version,confirmPublic:true}})).profile;
  const base='/api/people/'+p.id+'/exchange',publicPath='/people/nadia/exchange';
  await data(base,{method:'PUT',body:{enabled:true,policy:CONTACT_POLICY}});
- async function form(event=null){const path=publicPath+(event?'?event='+event:''),r=await request(path,{user:null}),html=await r.text();assert.equal(r.status,200,html);const token=html.match(/name="token" value="([^"]+)"/)[1],claims=decodeJwt(token);assert.equal(claims.nbf,claims.iat+2); // Issued forms impose a short minimum delay.
+ async function form(event=null){const path=publicPath+(event?'?event='+event:''),r=await request(path,{user:null}),html=await r.text();assert.equal(r.status,200,html);assert.match(html,/Activity records keep only an item ID, action and time for 90 days after each action/);const token=html.match(/name="token" value="([^"]+)"/)[1],claims=decodeJwt(token);assert.equal(claims.nbf,claims.iat+2); // Issued forms impose a short minimum delay.
   // Advance this signed test fixture past nbf without sleeping; real signatures are verified by the Worker.
   claims.nbf=Math.floor(Date.now()/1000)-1;const ready=await new SignJWT(claims).setProtectedHeader({alg:'HS256'}).sign(new TextEncoder().encode(secret));
   return{path,values:{token:ready,name:'Visitor',email:'visitor@example.com',organization:'',phone:'',message:'Hello\r\nAgain',consent:CONTACT_POLICY,website:''},issued:token};}
