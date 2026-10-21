@@ -12,7 +12,7 @@ Tinytrail uses official `@cloudflare/kumo` 2.15.0 with React 19.3.1. The standal
 | Dialogs, tables, textareas, remaining selects, checkbox/radio and file/color inputs | Native implementations styled with Kumo semantic tokens. These have not been migrated to Kumo React components. |
 | QR/print artwork, signatures and published content | Separate output surfaces; interface appearance does not recolor customer designs or change public content. |
 
-Kumo light/dark neutral, line, foreground, success, danger, warning and primary blue tokens are authoritative. ui/kumo-alignment.css bridges existing semantic names and overrides legacy hardcoded surfaces. Orange remains in Tinytrail's logo, illustrations and decorative brand text. Manrope remains self-hosted. Product controls use 14px content, medium weight, compact spacing, 8px corners, ring borders and instant state changes. Marketing layout remains distinct.
+Kumo light/dark neutral, line, foreground, success, danger and warning tokens are authoritative. The user selected Tinytrail orange for controls: Kumo brand tokens use #ff5e1f, hover #ff7038 and active #d63c01, with white primary-action text in both modes. ui/kumo-alignment.css bridges existing semantic names and overrides legacy hardcoded surfaces. Orange remains in Tinytrail's logo, illustrations and decorative brand text. Manrope remains self-hosted. Product controls use 14px content, medium weight, compact spacing, 8px corners, ring borders and instant state changes. Marketing layout remains distinct.
 
 ## Behavior
 
@@ -36,3 +36,5 @@ No database migration or production data export is involved. Roll back Worker/as
 Final staging Worker: 9d61accb-6bc9-4efa-a34b-83cd5836e3ce. Live checks passed for theme selection, persistent sign-in appearance, guest dashboard redirection, private API denial, absent legacy JSON, all new assets and zero CSP violations.
 
 Production Worker: 2f023bdd-4da8-4617-81fa-0776cc6e44e0 at https://tinytrail.link. The same live theme/menu, route-persistence, guest/private API, asset and strict-CSP checks passed after deployment. The preceding production version was 14d19f9d-b7b1-4df5-abb6-208284628f19.
+
+User brand selection, 21 October: Tinytrail orange controls with white action text in both modes. Focused local theme checks and live staging/production orange-token, white-text, menu, persistence, asset, guest/private API and CSP checks passed. Staging Worker facd05f8-f2ff-436e-817e-f0787c832288; production Worker bb1726d3-5010-4001-9da9-7daf1b525efb.

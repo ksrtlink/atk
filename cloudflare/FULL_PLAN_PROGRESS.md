@@ -34,3 +34,5 @@ Calmer homepage and brand typography, 21 October: repeated QR samples/print shee
 Kumo appearance update, 21 October: official Button/LinkButton/Input build-time HTML and an accessible React Select appearance menu; light/dark semantic tokens across homepage, sign-in and workspace. Dynamic controls use upstream recipes; native compatibility boundaries are documented in KUMO_THEME.md. Light/Dark enterprise and focused appearance/sign-in browser checks plus all 130 registered tests passed. No auth, link, export, public-content or database changes; Wallet, HubSpot and physical-device gates remain open.
 
 Kumo production release: Worker 2f023bdd-4da8-4617-81fa-0776cc6e44e0; staging Worker 9d61accb-6bc9-4efa-a34b-83cd5836e3ce. Both live sites passed appearance/menu, route-persistence, asset, guest/private API and strict-CSP smoke checks. See KUMO_THEME.md.
+
+User color preference applied: Tinytrail orange brand controls with white primary text; Kumo light/dark neutrals and components retained. Local and live checks passed. Production Worker bb1726d3-5010-4001-9da9-7daf1b525efb; KUMO_THEME.md.
