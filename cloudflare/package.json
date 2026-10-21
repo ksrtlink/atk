@@ -15,7 +15,8 @@
     "test:theme": "node tests/theme.mjs",
     "test:theme:browser": "node tests/browser-theme.mjs",
     "test:hero:browser": "node tests/browser-hero.mjs",
-    "test:tech-text:browser": "node tests/browser-tech-text.mjs"
+    "test:tech-text:browser": "node tests/browser-tech-text.mjs",
+    "test:scroll-expand:browser": "node tests/browser-scroll-expand.mjs"
   },
   "dependencies": {
     "@cloudflare/kumo": "2.15.0",

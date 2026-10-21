@@ -1,3 +1,4 @@
+import SharingExpand from './sharing-expand';
 import HeroMotion from './hero-motion';
 import React,{useEffect,useState} from 'react';
 import {CSPProvider} from '@cloudflare/kumo/primitives/csp-provider';
@@ -14,3 +15,5 @@ let queued=false;const schedule=()=>{if(queued)return;queued=true;queueMicrotask
 
 
 const hero=document.querySelector('[data-hero-motion]');if(hero)createRoot(hero).render(<HeroMotion/>);
+
+const sharing=document.querySelector('[data-sharing-expand]');if(sharing)createRoot(sharing).render(<SharingExpand/>);

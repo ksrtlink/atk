@@ -60,7 +60,9 @@ export default function HeroTechText() {
     const heading = document.querySelector<HTMLElement>('.hero-headline')!;
     let frame = 0, tries = 0;
     const ready = () => {
-      const canvases = [...root.current!.querySelectorAll('canvas')];
+      const node = root.current;
+      if (!node) return;
+      const canvases = [...node.querySelectorAll('canvas')];
       const painted = canvases.length === lines.length && canvases.every(canvas => {
         const ctx = canvas.getContext('2d');
         if (!ctx || !canvas.width || !canvas.height) return false;

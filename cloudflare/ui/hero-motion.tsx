@@ -53,6 +53,7 @@ export default function HeroMotion() {
   function toggle() {
     const next = !paused;
     setPaused(next);
+    dispatchEvent(new CustomEvent('tinytrail:motion', {detail:{paused:next}}));
     try { localStorage.setItem(preferenceKey, String(next)); } catch {}
   }
 

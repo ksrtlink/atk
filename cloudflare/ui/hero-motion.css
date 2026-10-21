@@ -30,3 +30,21 @@ html[data-mode=dark] .product-hero .hero-art img{content:url('/hero-grid-dark.we
 .hero-tech-line>div{position:relative;touch-action:pan-y;user-select:none}
 .hero-headline[data-tech-ready=true] .hero-title-fallback{opacity:0}
 @media(prefers-reduced-motion:reduce){.hero-tech-mount{display:none}.hero-headline .hero-title-fallback{opacity:1!important}}
+
+/* ScrollExpand: native page scroll, a single sticky stage, no nested scroller. */
+.sharing-static{display:contents}.sharing-expand-mount{display:none}
+.sharing-story[data-expand-ready=true]{display:block;position:relative}
+.sharing-story[data-expand-ready=true]>.sharing-static{display:block;position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.sharing-story[data-expand-ready=true]>.sharing-expand-mount{display:block}
+.sharing-expand-intro{padding:72px 48px 40px;max-width:850px}
+.sharing-expand-heading{font-size:clamp(32px,3.4vw,48px);font-weight:600;line-height:1.16;letter-spacing:-.05em;white-space:pre-line;margin-bottom:20px}
+.sharing-expand-intro>p{max-width:440px;font-size:16px;line-height:1.7;color:var(--muted)}
+.sharing-expand-scroll{position:relative;width:100%;height:auto;background:var(--theme-background)}
+.sharing-expand-scroll>div{position:relative;width:100%}
+.sharing-expand-scroll>div>div{position:sticky;top:0;width:100%;overflow:hidden}
+.sharing-expand-scroll>div>div>div{position:absolute;inset:0;will-change:clip-path}
+.sharing-expand-scroll img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;object-fit:cover;transform-origin:center;user-select:none;will-change:transform}
+.sharing-expand-scroll>div>div>div>div:first-of-type{pointer-events:none;opacity:0}
+.sharing-expand-scroll>div>div>div>div:last-child{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-end;padding:48px;opacity:0;will-change:opacity,transform}
+.sharing-expand-caption{display:grid;gap:24px;width:min(100%,400px);padding:28px;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:12px;text-align:left}
+.sharing-expand-caption h3{font-size:18px;font-weight:600;line-height:1.4;margin:0 0 8px}.sharing-expand-caption p{font-size:14px;line-height:1.7;color:var(--muted);margin:0}
