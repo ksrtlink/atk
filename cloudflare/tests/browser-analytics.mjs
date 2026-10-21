@@ -202,7 +202,7 @@ try {
   await fill("signin-email", "alice@example.com");
   await fill("signin-password", "password-test");
   await ev("document.getElementById('signin-form').requestSubmit()");
-  await wait("location.pathname==='/manage/' && !document.body.classList.contains('auth-pending')");
+  await wait("location.pathname==='/manage/' && document.body && !document.body.classList.contains('auth-pending')");
   await ev("document.querySelector('[data-view=analytics]').click()");
   await wait(
     "document.getElementById('analytics-total').textContent==='Not measured'",

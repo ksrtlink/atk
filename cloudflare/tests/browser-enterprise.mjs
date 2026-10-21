@@ -99,7 +99,7 @@ export async function login(id) {
   await wait("document.getElementById('signin-submit') && !document.getElementById('signin-submit').disabled");
   await fill('signin-email',id+'@example.com');await fill('signin-password','password-test');
   await ev("document.getElementById('signin-form').requestSubmit()");
-  await wait("location.pathname==='/manage/' && document.getElementById('account-top') && !document.body.classList.contains('auth-pending')");
+  await wait("location.pathname==='/manage/' && document.getElementById('account-top') && document.body && !document.body.classList.contains('auth-pending')");
 }
 export async function logout() {await click('account-top');await click('auth-signout');await wait("location.pathname==='/' && document.getElementById('home-signin') && !document.getElementById('home-signin').hidden");}
 export async function shot(name, width = 1440, height = 1000) {
@@ -141,12 +141,14 @@ try {
   await send("Page.navigate", { url: "http://127.0.0.1:4174/" });
   await wait("document.getElementById('hero-create-form')");
   await wait("document.readyState === 'complete'");
+  await wait("!!window.tinytrailAppearance");
+  await ev(`tinytrailAppearance.set('${process.env.QA_THEME==='dark'?'dark':'light'}')`);
   const theme = await ev("({accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),radius:getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()})");
-  assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).backgroundColor"), "rgb(255, 94, 31)");
+  assert.ok(await ev("getComputedStyle(document.querySelector('.primary')).backgroundImage.includes('gradient')"));
   assert.equal(theme.radius,"8px");
-  assert.equal(await ev("getComputedStyle(document.body).color"),"rgb(38, 38, 38)");
-  assert.equal(await ev("getComputedStyle(document.body).backgroundColor"),"rgb(247, 247, 248)");
-  assert.equal(await ev("getComputedStyle(document.querySelector('.hero-tool')).borderRadius"),"16px");
+  assert.equal(await ev("getComputedStyle(document.body).color"),process.env.QA_THEME==='dark'?"oklch(0.97 0 none)":"oklch(0.205 0 none)");
+  assert.equal(await ev("getComputedStyle(document.body).backgroundColor"),process.env.QA_THEME==='dark'?"oklch(0.1 0 0)":"oklch(0.9875 0 0)");
+  assert.equal(await ev("getComputedStyle(document.querySelector('.hero-tool')).borderRadius"),"12px");
   assert.equal(await ev("getComputedStyle(document.querySelector('.primary')).color"),"rgb(255, 255, 255)");
 
   await shot("landing-desktop");
@@ -410,7 +412,7 @@ try {
   );
   assert.equal(await ev("getComputedStyle(document.getElementById('company-switcher')).display"), "none");
   assert.equal(await ev("document.getElementById('assigned-company-name').textContent"), "Northstar Company");
-  assert.equal(await ev("getComputedStyle(document.querySelector('.button.primary')).backgroundColor"), "rgb(255, 94, 31)");
+  assert.ok(await ev("getComputedStyle(document.querySelector('.button.primary')).backgroundImage.includes('gradient')"));
   assert.deepEqual(await ev("({accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),radius:getComputedStyle(document.documentElement).getPropertyValue('--radius').trim()})"), theme);
   const forged = await ev(`fetch('/api/links',{headers:{Authorization:${JSON.stringify("Bearer " + tokens.alice.idToken)},'X-Workspace-Id':'tinytrail-internal'}}).then(r=>r.status)`);
   assert.equal(forged,403);
@@ -569,7 +571,7 @@ try {
   await shot("enterprise-desktop", 1440, 1000);
   await shot("enterprise-mobile", 390, 844);
   await ev("document.querySelector('[data-view=resources]').click()");
-  await wait("document.getElementById('resource-new')");
+  await wait("!!document.getElementById('resource-new')");
   await click("resource-new");
   await fill("resource-title", "Conference resources");
   await fill("resource-slug", "browser-resources");
@@ -608,7 +610,7 @@ try {
   await shot("resource-public-desktop",1440,1000);
   await shot("resource-public-mobile",390,844);
   await send("Page.navigate",{url:"http://127.0.0.1:4174/manage/"});
-  await wait("document.getElementById('account-top') && !document.body.classList.contains('auth-pending')");
+  await wait("document.getElementById('account-top') && document.body && !document.body.classList.contains('auth-pending')");
   await ev("document.querySelector('[data-view=resources]').click()");
   await wait("document.querySelector('#resource-list button')");
   await ev("document.querySelector('#resource-list button').click()");
