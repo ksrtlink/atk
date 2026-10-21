@@ -1,6 +1,6 @@
 # Remaining full-plan acceptance gates
 
-Checkpoint: 20 October 2026, Dubai. The latest release is production Worker 6cf02975-cff6-4f75-aedc-c5b3b557943b, with 130 registered tests passing. The sign-in/presentation release is recorded in SIGNIN_REDESIGN.md. The complete agreed objective remains open; connection diagnostics are not pass issuance.
+Checkpoint: 21 October 2026, Dubai. The latest release is production Worker 22480a53-6038-4d90-a24a-947de1999f6f. The homepage visual refresh has passed focused browser and deployed smoke checks; see LANDING_VISUALS.md. The unchanged registered backend/navigation suite last passed 130 tests. The sign-in/presentation release is recorded in SIGNIN_REDESIGN.md. The complete agreed objective remains open; connection diagnostics are not pass issuance.
 
 ## Current evidence
 

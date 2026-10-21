@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="/landing.css" />
     <link rel="stylesheet" href="/theme.css" />
     <link rel="stylesheet" href="/cloudflare-style.css" />
+    <link rel="stylesheet" href="/landing-visual.css" />
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -44,11 +45,13 @@
           <div class="hero-copy">
             <p class="eyebrow">SMALL LINKS. STRONG CONNECTIONS.</p>
             <h1>Short links.<br /><span>Sharp QR codes.</span></h1>
-            <p class="intro">Turn any URL into a short link or a QR code that looks as good as it works. Create, customize, and keep everything in one place.</p>
-            <div class="hero-actions"><a class="button primary" data-account-cta href="/signin/?mode=signup">Create free account <span aria-hidden="true">↗</span></a><a class="text-link" href="#workflow">See what you can create ↓</a></div>
+            <p class="intro">Shorten your links. Shape your QR codes. Make every connection look as good as it works.</p>
+            <div class="hero-actions"><a class="button primary" data-account-cta href="/signin/?mode=signup">Create free account <span aria-hidden="true">↗</span></a><a class="text-link" href="#quick-tools">Try the tools <span aria-hidden="true">↓</span></a></div>
             <p class="hero-note" id="home-session-note" role="status">A private library for you. A shared workspace for your team.</p>
           </div>
-          <div class="hero-tool-wrap">
+          <div class="hero-art" aria-hidden="true"><img src="/landing-hero.webp" width="1536" height="1024" alt="" fetchpriority="high" decoding="async"></div>
+        </section>
+          <section class="hero-tool-wrap landing-quicktools" id="quick-tools" aria-label="Create a link or QR code">
             <div class="hero-tool">
               <div class="tool-tabs" role="group" aria-label="Choose what to create"><button type="button" id="hero-link-tab" aria-pressed="true">Short link</button><button type="button" id="hero-qr-tab" aria-pressed="false">QR code</button></div>
               <div class="tool-body"><h2 id="hero-tool-title">Start with a long link.</h2><p id="hero-tool-description">Make it shorter. Keep it easy to share.</p>
@@ -57,8 +60,7 @@
               </div>
               <div class="tool-qr-feature"><div class="hero-sample-qr" aria-label="Example QR design"><!--SAMPLE_QR--></div><div><strong>Designed for screens.<br />Ready for print.</strong><p>Custom shapes and colors.<br />SVG, PNG, and JPG exports.</p></div></div>
             </div>
-          </div>
-        </section>
+          </section>
         <section class="statement" id="workflow">
           <p class="eyebrow">LESS REPETITION. MORE CONSISTENCY.</p>
           <div>
