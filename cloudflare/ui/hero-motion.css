@@ -17,3 +17,16 @@ html[data-mode=dark] .product-hero .hero-art img{content:url('/hero-grid-dark.we
 @media(max-width:480px){.product-hero{min-height:710px}.product-hero .hero-copy{padding:32px 20px 0}.product-hero .hero-copy h1{font-size:clamp(36px,10.2vw,44px)}.product-hero .hero-art{top:375px}.product-hero .hero-note{max-width:310px}.product-hero::after{background:linear-gradient(180deg,var(--theme-background) 0%,var(--theme-background) 51%,transparent 70%)}}
 
 @media(max-width:768px){.product-hero .hero-art img,.hero-distortion{mask-image:linear-gradient(180deg,transparent,#000 15%,#000 80%,transparent)}}
+
+/* Accessible HTML keeps the heading's geometry; the canvas adds only its visual effect. */
+.product-hero .hero-headline{position:relative}
+.product-hero h1 .hero-title-line{display:block;color:var(--text)}
+.product-hero h1 .hero-title-line.is-accent{color:var(--tinytrail-orange)}
+.product-hero h1 .hero-title-fallback,.product-hero h1 .hero-tech-mount{color:inherit}
+.hero-title-fallback{display:inline-block}
+.hero-tech-mount,.hero-tech-lines{position:absolute;inset:0;display:block}
+.hero-tech-line{position:absolute;display:block}
+.hero-tech-line>div,.hero-tech-line canvas{display:block;width:100%;height:100%}
+.hero-tech-line>div{position:relative;touch-action:pan-y;user-select:none}
+.hero-headline[data-tech-ready=true] .hero-title-fallback{opacity:0}
+@media(prefers-reduced-motion:reduce){.hero-tech-mount{display:none}.hero-headline .hero-title-fallback{opacity:1!important}}

@@ -16,7 +16,7 @@ Design dials: variance 6, motion 6, density 3. This is a motion/hero recompositi
 - Existing esbuild compiles TSX; the project's Kumo standalone Tailwind stylesheet supplies utilities. Explicit scoped layout rules also keep the effect's root/canvas dimensions independent of utility scanning.
 - Full upstream MIT + Commons Clause license is retained in ui/components/REACT_BITS_LICENSE.md and copied to the public build. It is used as part of this app, not sold as a component pack.
 
-The wrapper ui/hero-motion.tsx passes the requested values unchanged: grid 15, radius 0.18, strength 0.15, relaxation 0.96, mode drag, softness 0, chroma 0, idle 0.3, clickRipple true and intro true. Pointer listeners are passive and do not block navigation or scrolling. CSS reveals the existing copy once without distorting text or buttons.
+The wrapper ui/hero-motion.tsx passes the requested values unchanged: grid 15, radius 0.18, strength 0.15, relaxation 0.96, mode drag, softness 0, chroma 0, idle 0.3, clickRipple true and intro true. Pointer listeners are passive and do not block navigation or scrolling. CSS reveals the existing copy once. The later TechText integration adds a separate headline effect; see TECH_TEXT.md. Buttons retain their normal clickable presentation.
 
 ## Runtime and fallbacks
 

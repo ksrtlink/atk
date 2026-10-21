@@ -149,6 +149,6 @@ console.log(
 
 await cp(new URL('node_modules/@cloudflare/kumo/dist/styles/kumo-standalone.css',project),new URL('public/kumo.css',project));
 for(const file of ['appearance-init.js','kumo-alignment.css','landing-hero-dark.webp','sharing-art-dark.webp'])await cp(new URL('ui/'+file,project),new URL('public/'+file,project));
-await build({entryPoints:[fileURLToPath(new URL('ui/appearance.jsx',project))],outfile:fileURLToPath(new URL('public/appearance.mjs',project)),bundle:true,format:'esm',platform:'browser',minify:true,define:{'process.env.NODE_ENV':'"production"'},legalComments:'eof'});
+await build({entryPoints:[fileURLToPath(new URL('ui/appearance.jsx',project))],outfile:fileURLToPath(new URL('public/appearance.mjs',project)),bundle:true,jsx:'automatic',format:'esm',platform:'browser',minify:true,define:{'process.env.NODE_ENV':'"production"'},legalComments:'eof'});
 
 await cp(new URL('ui/components/REACT_BITS_LICENSE.md',project),new URL('public/REACT_BITS_LICENSE.md',project));

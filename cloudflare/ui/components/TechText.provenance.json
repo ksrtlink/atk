@@ -1,0 +1,9 @@
+{
+  "registry": "https://reactbits.dev/r/TechText-TS-TW.json",
+  "component": "TechText-TS-TW",
+  "retrieved": "2026-10-21",
+  "sha256": "a9293c3d7d04e7b13867b54ec64b47039640c828bf0adcad8e6e36a548e1281f",
+  "dependencies": [],
+  "sourceModified": false,
+  "license": "REACT_BITS_LICENSE.md"
+}

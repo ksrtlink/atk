@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import HeroTechText from './hero-tech-text';
 import GridDistortion from './components/GridDistortion';
 
 const preferenceKey = 'tinytrail.hero-motion-paused';
@@ -42,7 +44,8 @@ export default function HeroMotion() {
     };
   }, []);
 
-  const active = !paused && !reduced && visible && inView && !failed;
+  const motionEnabled = !paused && !reduced && visible && inView;
+  const active = motionEnabled && !failed;
   const imageSrc = mobile
     ? theme === 'dark' ? '/landing-hero-dark.webp' : '/landing-hero.webp'
     : theme === 'dark' ? '/hero-grid-dark.webp' : '/hero-grid-light.webp';
@@ -53,11 +56,14 @@ export default function HeroMotion() {
     try { localStorage.setItem(preferenceKey, String(next)); } catch {}
   }
 
+  const headline = document.querySelector('[data-hero-tech]');
+
   return <>
+    {headline && motionEnabled && createPortal(<HeroTechText key={theme}/>, headline)}
     <div className="hero-distortion" aria-hidden="true" data-motion-active={active} data-motion-image={imageSrc}>
       {active && <GridDistortion imageSrc={imageSrc} grid={15} radius={0.18} strength={0.15} relaxation={0.96} mode="drag" softness={0} chroma={0} idle={0.3} clickRipple={true} intro={true} className="hero-distortion-surface" />}
     </div>
-    {!reduced && !failed && <button type="button" className="button secondary hero-motion-toggle" aria-pressed={paused} onClick={toggle}>
+    {!reduced && <button type="button" className="button secondary hero-motion-toggle" aria-pressed={paused} onClick={toggle}>
       <svg viewBox="0 0 24 24" aria-hidden="true" width="14" height="14" fill="currentColor">{paused ? <path d="M7 4v16l13-8z"/> : <path d="M6 4h4v16H6zm8 0h4v16h-4z"/>}</svg>
       {paused ? 'Play motion' : 'Pause motion'}
     </button>}
