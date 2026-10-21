@@ -1,0 +1,9 @@
+{
+  "registry": "https://reactbits.dev/r/GridDistortion-TS-TW.json",
+  "component": "GridDistortion-TS-TW",
+  "retrieved": "2026-10-21",
+  "sha256": "24e0f415cca31a9e737ed985d8dd414d97c1628a969a4edd68707942f91f04e0",
+  "dependencies": [],
+  "sourceModified": false,
+  "license": "REACT_BITS_LICENSE.md"
+}

@@ -88,7 +88,7 @@ await cp(new URL("ui/fonts/",project),new URL("public/fonts/",project),{recursiv
 await mkdir(new URL("public/signin/", project), {recursive:true});
 await writeFile(new URL("public/signin/index.html", project), kumoHTML(await readFile(new URL("ui/signin.html",project),"utf8")));
 for(const file of ["signin.css","signin.mjs","signin-art.webp"]) await cp(new URL("ui/"+file,project),new URL("public/"+file,project));
-for (const file of ["landing.css", "landing.mjs", "landing-visual.css", "landing-hero.webp", "sharing-art.webp", "theme.css", "cloudflare-style.css", "resource-page.css"])
+for (const file of ["landing.css", "landing.mjs", "landing-visual.css", "hero-motion.css", "hero-grid-light.webp", "hero-grid-dark.webp", "landing-hero.webp", "sharing-art.webp", "theme.css", "cloudflare-style.css", "resource-page.css"])
   await cp(new URL("ui/" + file, project), new URL("public/" + file, project));
 await writeFile(
   new URL("public/_headers", project),
@@ -150,3 +150,5 @@ console.log(
 await cp(new URL('node_modules/@cloudflare/kumo/dist/styles/kumo-standalone.css',project),new URL('public/kumo.css',project));
 for(const file of ['appearance-init.js','kumo-alignment.css','landing-hero-dark.webp','sharing-art-dark.webp'])await cp(new URL('ui/'+file,project),new URL('public/'+file,project));
 await build({entryPoints:[fileURLToPath(new URL('ui/appearance.jsx',project))],outfile:fileURLToPath(new URL('public/appearance.mjs',project)),bundle:true,format:'esm',platform:'browser',minify:true,define:{'process.env.NODE_ENV':'"production"'},legalComments:'eof'});
+
+await cp(new URL('ui/components/REACT_BITS_LICENSE.md',project),new URL('public/REACT_BITS_LICENSE.md',project));
