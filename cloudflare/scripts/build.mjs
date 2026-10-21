@@ -1,7 +1,6 @@
 import { cp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { build } from "esbuild";
 import { fileURLToPath } from "node:url";
-import QRCode from "qrcode";
 const project = new URL("../", import.meta.url),
   source = new URL("../manage/", project),
   output = new URL("public/manage/", project);
@@ -82,20 +81,13 @@ await build({
   minify: true,
   legalComments: "eof",
 });
-let landing = await readFile(new URL("ui/landing.html", project), "utf8");
-landing = landing.replaceAll(
-  "<!--SAMPLE_QR-->",
-  await QRCode.toString("https://example.com/annual-report", {
-    type: "svg",
-    margin: 4,
-    color: { dark: "#18181b", light: "#ffffff" },
-  }),
-);
+const landing = await readFile(new URL("ui/landing.html", project), "utf8");
 await writeFile(new URL("public/index.html", project), landing);
+await cp(new URL("ui/fonts/",project),new URL("public/fonts/",project),{recursive:true});
 await mkdir(new URL("public/signin/", project), {recursive:true});
 await cp(new URL("ui/signin.html", project), new URL("public/signin/index.html", project));
 for(const file of ["signin.css","signin.mjs","signin-art.webp"]) await cp(new URL("ui/"+file,project),new URL("public/"+file,project));
-for (const file of ["landing.css", "landing.mjs", "landing-visual.css", "landing-hero.webp", "theme.css", "cloudflare-style.css", "resource-page.css"])
+for (const file of ["landing.css", "landing.mjs", "landing-visual.css", "landing-hero.webp", "sharing-art.webp", "theme.css", "cloudflare-style.css", "resource-page.css"])
   await cp(new URL("ui/" + file, project), new URL("public/" + file, project));
 await writeFile(
   new URL("public/_headers", project),

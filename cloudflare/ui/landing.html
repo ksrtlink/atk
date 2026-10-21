@@ -13,6 +13,7 @@
     />
     <title>TinyTrail | Short links &amp; custom QR codes</title>
     <link rel="icon" href="/manage/tinytrail-icon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/fonts/manrope-5.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/landing.css" />
     <link rel="stylesheet" href="/theme.css" />
     <link rel="stylesheet" href="/cloudflare-style.css" />
@@ -43,9 +44,9 @@
       <main id="main">
         <section class="hero product-hero">
           <div class="hero-copy">
-            <p class="eyebrow">SMALL LINKS. STRONG CONNECTIONS.</p>
-            <h1>Short links.<br /><span>Sharp QR codes.</span></h1>
-            <p class="intro">Shorten your links. Shape your QR codes. Make every connection look as good as it works.</p>
+            
+            <h1>Share more.<br /><span>Keep it simple.</span></h1>
+            <p class="intro">One place for short links, thoughtful QR codes, and the things you want to share.</p>
             <div class="hero-actions"><a class="button primary" data-account-cta href="/signin/?mode=signup">Create free account <span aria-hidden="true">↗</span></a><a class="text-link" href="#quick-tools">Try the tools <span aria-hidden="true">↓</span></a></div>
             <p class="hero-note" id="home-session-note" role="status">A private library for you. A shared workspace for your team.</p>
           </div>
@@ -58,142 +59,18 @@
                 <form id="hero-create-form"><label for="hero-url">Destination URL</label><input id="hero-url" name="url" type="url" required maxlength="4096" placeholder="https://example.com/your-page" autocomplete="url" spellcheck="false" /><button id="hero-create-submit" class="button primary" type="submit">Shorten a link <span aria-hidden="true">↗</span></button><p id="hero-create-error" class="hero-error" role="alert" hidden></p></form>
                 <p class="tool-signin-note">Continue in your workspace after sign-in. You choose when to create and save.</p>
               </div>
-              <div class="tool-qr-feature"><div class="hero-sample-qr" aria-label="Example QR design"><!--SAMPLE_QR--></div><div><strong>Designed for screens.<br />Ready for print.</strong><p>Custom shapes and colors.<br />SVG, PNG, and JPG exports.</p></div></div>
+              <div class="tool-qr-feature tool-reassurance"><svg class="brand-icon" aria-hidden="true"><use href="/manage/icons.svg#link"></use></svg><div><strong>A little easier to share.</strong><p>Start with any website.<br>Keep the result in your library.</p></div></div>
             </div>
           </section>
-        <section class="statement" id="workflow">
-          <p class="eyebrow">LESS REPETITION. MORE CONSISTENCY.</p>
-          <div>
-            <h2>From a spreadsheet<br />to something worth sharing.</h2>
-            <p>
-              A campaign rarely stops at one link. Create a complete set, keep
-              the styling consistent, and take it straight to print.
-            </p>
-          </div>
+        <section class="share-workflow" id="workflow" aria-labelledby="workflow-heading">
+          <div class="section-intro"><h2 id="workflow-heading">Less effort.<br>More sharing.</h2><p>One link or a whole campaign. A simple flow from the first idea to the final share.</p></div>
+          <ol class="share-steps"><li><svg class="brand-icon" aria-hidden="true"><use href="/manage/icons.svg#link"></use></svg><h3>Bring your link.</h3><p>A page, a project, an event. Start with what you want to share.</p></li><li><svg class="brand-icon" aria-hidden="true"><use href="/manage/icons.svg#files"></use></svg><h3>Make it yours.</h3><p>Choose a short name. Give your QR code a style that feels like you.</p></li><li><svg class="brand-icon" aria-hidden="true"><use href="/manage/icons.svg#stack"></use></svg><h3>Keep it together.</h3><p>Save your work, create in batches, and find it all in one place.</p></li></ol>
         </section>
-        <section class="workflow-grid" aria-label="Bulk creation workflow">
-          <article>
-            <div class="step-line"><span>IMPORT</span><span>01</span></div>
-            <h3>Bring the whole list.</h3>
-            <p>
-              Upload a CSV or paste your destinations. Preview up to 100 rows
-              and resolve short-name conflicts before creating.
-            </p>
-            <div class="mini-table">
-              <span>Title</span><span>Destination</span
-              ><strong>Annual report</strong><span>example.com/report</span
-              ><strong>Product guide</strong><span>example.com/guide</span>
-            </div>
-          </article>
-          <article>
-            <div class="step-line"><span>DESIGN</span><span>02</span></div>
-            <h3>Make the set feel like you.</h3>
-            <p>
-              Choose dot shapes, corners, and colors. Save a company preset and
-              apply it across the batch.
-            </p>
-            <div
-              class="shape-samples"
-              aria-label="Square, rounded, and circular QR pattern examples"
-            >
-              <div class="pattern square"></div>
-              <div class="pattern rounded"></div>
-              <div class="pattern dots"></div>
-            </div>
-          </article>
-          <article>
-            <div class="step-line"><span>DELIVER</span><span>03</span></div>
-            <h3>Digital clarity. Print precision.</h3>
-            <p>
-              Download SVG, PNG, or JPG sets with a URL manifest. Export vector
-              PDF sheets for A4 or US Letter.
-            </p>
-            <div class="file-types">
-              <span>.svg</span><span>.png</span><span>.jpg</span
-              ><span>.pdf</span>
-            </div>
-          </article>
-        </section>
-        <section class="company-section" id="company">
-          <div class="company-intro">
-            <p class="eyebrow">BUILT AROUND THE COMPANY</p>
-            <h2>A shared standard.<br />A shared workspace.</h2>
-            <p>
-              Your work belongs with your company. Invite colleagues, keep one
-              library, and give every connection a consistent identity.
-            </p>
-            <a class="text-link" data-account-cta href="/signin/?mode=signup">Request access ↗</a>
-          </div>
-          <div class="company-features">
-            <article>
-              <span class="feature-mark">+</span>
-              <div>
-                <h3>The right people, in one place.</h3>
-                <p>
-                  Approved company access, verified email accounts, and
-                  invitations controlled by your workspace owner.
-                </p>
-              </div>
-            </article>
-            <article>
-              <span class="feature-mark">↗</span>
-              <div>
-                <h3>Keep the code. Update the destination.</h3>
-                <p>
-                  Change where a TinyTrail short link leads while keeping the
-                  URL and its printed QR code intact.
-                </p>
-              </div>
-            </article>
-            <article>
-              <span class="feature-mark">▦</span>
-              <div>
-                <h3>QR codes without the extra step.</h3>
-                <p>
-                  Generate a QR directly from any website URL. Creating a short
-                  link is always optional.
-                </p>
-              </div>
-            </article>
-          </div>
-        </section>
-        <section class="print-section">
-          <div
-            class="print-visual"
-            aria-label="Example print sheet with six QR codes"
-          >
-            <div class="sheet">
-              <div class="sheet-top">
-                COMPANY COLLECTION <span>A4 / LETTER</span>
-              </div>
-              <div class="sheet-grid">
-                <!--SAMPLE_QR--><!--SAMPLE_QR--><!--SAMPLE_QR--><!--SAMPLE_QR--><!--SAMPLE_QR--><!--SAMPLE_QR-->
-              </div>
-              <div class="sheet-bottom">Clear borders. Considered spacing.</div>
-            </div>
-          </div>
-          <div class="print-copy">
-            <p class="eyebrow">DESIGNED TO LEAVE THE SCREEN</p>
-            <h2>Small details.<br />Better impressions.</h2>
-            <p>
-              QR codes belong on reports, event signage, packaging, and
-              everything your company puts into the world.
-            </p>
-            <ul>
-              <li>Vector SVG and PDF for crisp print output</li>
-              <li>Dark-on-light contrast checks and clear margins</li>
-              <li>Shared presets for consistent company styling</li>
-              <li>Saved batches that resume after an interruption</li>
-            </ul>
-            <p class="print-note">
-              Always scan-test the final artwork at its intended print size.
-            </p>
-          </div>
-        </section>
+        <section class="sharing-story" aria-labelledby="sharing-heading"><div class="sharing-art" aria-hidden="true"><img src="/sharing-art.webp" width="1536" height="1024" alt="" loading="lazy" decoding="async"></div><div class="sharing-copy"><h2 id="sharing-heading">Everything you share.<br>A little more you.</h2><p>Small details make a difference. Give your links a clear name and your codes a considered design.</p><div class="sharing-points"><div><h3>Looks good anywhere.</h3><p>Made for a message, a presentation, or the printed page.</p></div><div><h3>Room to change.</h3><p>Update a short link’s destination while keeping the same address.</p></div></div></div></section>
+        <section class="brand-audience" id="company" aria-labelledby="audience-heading"><div class="section-intro"><h2 id="audience-heading">Just you.<br>Or all of you.</h2><p>A private space for your own ideas. A shared library when it’s time to work together.</p></div><div class="audience-grid"><article><svg class="brand-icon" aria-hidden="true"><use href="/manage/icons.svg#user"></use></svg><h3>Your own space.</h3><p>Sign up with an email you can verify. Create links and designs in a library that belongs to you.</p><span class="audience-note">No company required.</span></article><article><svg class="brand-icon" aria-hidden="true"><use href="/manage/icons.svg#users"></use></svg><h3>Better, together.</h3><p>Keep a consistent style and a shared collection. Company owners manage who joins the workspace.</p><span class="audience-note">Company access by approval or invitation.</span></article></div></section>
         <section class="faq" id="questions">
           <div>
-            <p class="eyebrow">A FEW USEFUL DETAILS</p>
-            <h2>Before your first scan.</h2>
+            <h2>A few things<br>to know.</h2>
           </div>
           <div>
             <details>
@@ -240,8 +117,7 @@
         </section>
         <section class="closing">
           <div>
-            <p class="eyebrow">MAKE EVERY CONNECTION COUNT</p>
-            <h2>Your next campaign.<br />One consistent trail.</h2>
+            <h2>Good things start<br>with a small link.</h2>
           </div>
           <a class="button primary" data-account-cta href="/signin/?mode=signup"
             >Create free account <span aria-hidden="true">↗</span></a
@@ -250,7 +126,7 @@
       </main>
       <footer>
         <a href="/" class="footer-brand">TinyTrail</a
-        ><span>Personal links. Shared company libraries.</span
+        ><span>Links, made simple.</span
         ><a id="footer-account" href="/signin/">Sign in ↗</a>
       </footer>
     </div>
